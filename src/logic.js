@@ -156,6 +156,9 @@ wrist-roller|Wrist Roller (Auf- und Abrollen)|Unterarme|SO
 gripper|Handtrainer (Gripper)|Unterarme|SO
 fat-grip|Dicker-Griff-Halten (Fat Grip)|Unterarme|LH|t
 hock-iso|Isometrische Hocke (Wakeboard-Stance)|Quadrizeps|KG|t
+box-jump|Box Jumps (weiche Landung)|Quadrizeps|KG|p
+skater|Skater-Sprünge (einbeinige Landung)|Quadrizeps|KG|p
+handle-hold|Handle-Hold (Rudern am Seilgriff halten)|Rücken|KB|t
 seil-rudern|Rudern am Seilgriff (Kabel)|Rücken|KB|c
 power-clean|Power Clean|Ganzkörper|LH|cl
 thruster|Thrusters|Ganzkörper|LH|c
@@ -171,7 +174,7 @@ const EXLIST = [];
 RAW.trim().split('\n').forEach(line => {
   const f = line.split('|');
   const fl = f[4] || '';
-  const e = {id:f[0], name:f[1], m:f[2], eq:f[3], c:fl.includes('c'), l:fl.includes('l'), t:fl.includes('t'), main:fl.includes('m'), inc: f[6] ? parseFloat(f[6]) : INC[f[3]]};
+  const e = {id:f[0], name:f[1], m:f[2], eq:f[3], c:fl.includes('c'), l:fl.includes('l'), t:fl.includes('t'), main:fl.includes('m'), plyo:fl.includes('p'), inc: f[6] ? parseFloat(f[6]) : INC[f[3]]};
   if (f[5]) { const b = f[5].split(':'); e.base = b[0]; e.ratio = parseFloat(b[1]); }
   EX[e.id] = e; EXLIST.push(e);
 });
@@ -272,7 +275,7 @@ function fmtPace(secPerKm) { if (!isFinite(secPerKm) || secPerKm <= 0) return '�
 
 /* ===== Profil ===== */
 function defaultProfile() {
-  return {v:1, done:false, split:'fullbody', days:[0,2,4], time:'18:00', minutes:60, model:'linear', bw:null,
+  return {v:2, done:false, split:'fullbody', days:[0,2,4], time:'18:00', minutes:60, model:'linear', bw:null,
     e1:{}, src:{}, adj:{}, swaps:{}, block:{n:0, no:1, e1Start:{}, started:todayStr()}, upd:0,
     wake:false, season:'2027-05-01', gripEvery:14, gripSet:['hang','towel','rep'], gripGoal:{}, height:null, tomb:[],
     remind:{on:false, lead:30}, bwGoal:null, bwDate:null, custom:[], exNotes:{}};
@@ -356,7 +359,7 @@ function weeklyKm(runs, weeks) {
 }
 
 /* ===== Plan fuer eine Einheit ===== */
-function bwRange(e) { return e.m === 'Core' ? [12,20] : e.m === 'Brust' ? [10,20] : [6,12]; }
+function bwRange(e) { if (e.plyo) return [4,6]; /* Sprünge: wenige, saubere Wiederholungen */ return e.m === 'Core' ? [12,20] : e.m === 'Brust' ? [10,20] : [6,12]; }
 function dpSuggest(last, lo, hi, inc) {
   if (!last) return {kg:null, reps:lo};
   const ws = workSets(last.x), top = Math.max(...ws.map(s => s.kg || 0));
@@ -407,8 +410,9 @@ function buildWorkout(p, sessions, n, planId) {
   let ids = plan.items.map(it => it.exId);
   if (pr.deload && ids.length > 3) ids = ids.slice(0, Math.max(3, Math.ceil(ids.length * 0.7)));
   const items = ids.map((id, i) => exPlan(p, id, i, pr, sessions));
-  /* Wakeboard-Fokus: Griff-Finisher, außer der Plan hat schon eine Unterarm-Übung */
-  if (p.wake && !ids.some(id => EX[id].m === 'Unterarme')) items.push(exPlan(p, GRIP_ROT[n % GRIP_ROT.length], 99, pr, sessions));
+  /* Wakeboard-Fokus: Griff-Finisher, außer der Plan fordert den Griff schon (Unterarm-, Hang- oder Halteübung) */
+  const GRIP_HEAVY = ['hanging-leg','hanging-knee','handle-hold','toes-bar','klimmzuege','klimmzug-unter','klimmzug-neutral'];
+  if (p.wake && !ids.some(id => EX[id].m === 'Unterarme' || GRIP_HEAVY.includes(id))) items.push(exPlan(p, GRIP_ROT[n % GRIP_ROT.length], 99, pr, sessions));
   const est = 5 + items.reduce((a, it) => a + it.sets * (it.mode === 'pct' ? 3.5 : 2.3), 0);
   return {planId:plan.id, tplId:plan.id, name:plan.name, color:plan.color, pr, items, est:Math.round(est / 5) * 5};
 }

@@ -237,12 +237,12 @@ const ACT = {
   'ob-next'() { S.ui.ob.step++; render(); window.scrollTo(0, 0); },
   'ob-back'() { S.ui.ob.step--; render(); window.scrollTo(0, 0); },
   'ob-day'(v) { const d = S.ui.ob.d, i = +v, k = d.days.indexOf(i); if (k >= 0) { if (d.days.length > 2) d.days.splice(k, 1); else toast('Mindestens 2 Trainingstage.'); } else if (d.days.length < 6) d.days.push(i); else toast('Höchstens 6 Trainingstage.'); d.days.sort(); if (!S.ui.ob.splitPicked) d.split = resolveSplit({...d, split:'auto'}); render(); },
-  'ob-split'(v) { const ob = S.ui.ob; ob.useOld = v === 'old'; if (!ob.useOld) ob.d.split = v.split(':')[1]; ob.splitPicked = true; render(); },
+  'ob-split'(v) { const ob = S.ui.ob, k = v.split(':'); ob.tpl = k[0] === 'tpl' ? k[1] : null; if (!ob.tpl) ob.d.split = k[1]; ob.splitPicked = true; render(); },
   'ob-model'(v) { S.ui.ob.d.model = v; render(); },
   'ob-finish'() {
     const ob = S.ui.ob, d = ob.d;
     MAIN_LIFTS.forEach(id => { const x = obE1(id); if (x) { d.e1[id] = x.v; d.src[id] = x.src; } });
-    if (ob.useOld) { const pg = programFromTemplate('old'); pg.plans.forEach((pl, i) => { pl.days = d.days[i] !== undefined ? [d.days[i]] : []; }); d.programs = [pg]; d.prog = pg.id; }
+    if (ob.tpl) { if (ob.tpl === 'wake3') d.wake = true; const pg = programFromTemplate(ob.tpl); pg.plans.forEach((pl, i) => { pl.days = d.days[i] !== undefined ? [d.days[i]] : []; }); d.programs = [pg]; d.prog = pg.id; }
     d.done = true; d.block = {n:0, no:1, e1Start:{...d.e1}, started:todayStr()};
     S.p = normProfile(d); S.ui.ob = null; S.tab = 'train'; saveProfile(); render(); window.scrollTo(0, 0);
     toast('Fertig. Dein Training für heute steht ganz oben.');
@@ -472,6 +472,13 @@ function linkOldSessions() {
 Nat.init();
 lsLoad();
 linkOldSessions();
+/* Einmalig: Wakeboard-Programm hinzufügen und aktivieren (Wunsch aus Version 1.8) */
+if (S.p && S.p.done && (S.p.v || 1) < 2) {
+  const pg = programFromTemplate('wake3');
+  S.p.v = 2; S.p.wake = true;
+  remapBlock(p => { p.programs.push(pg); p.prog = pg.id; });
+  setTimeout(() => toast('Neu: „' + pg.name + '“ ist aktiv. Wechseln über „Programm“.'), 600);
+}
 S.tab = tryLS(() => localStorage.getItem(LS + '.tab')) || 'today';
 /* alte Bereichsnamen aus Version 1.x */
 ({today:() => { S.tab = 'train'; }, plan:() => { S.tab = 'more'; S.ui.more = 'peri'; }, grip:() => { S.tab = 'body'; S.ui.bseg = 'grip'; }, run:() => { S.tab = 'more'; S.ui.more = 'run'; }, ex:() => { S.tab = 'stats'; S.ui.sseg = 'ex'; }}[S.tab] || (() => {}))();

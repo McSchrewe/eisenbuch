@@ -57,8 +57,8 @@ function vOnboard() {
     '<p class="hint">' + EXLIST.length + ' Übungen sind hinterlegt, eigene kannst du jederzeit anlegen.</p></div></div>' +
     '<button class="btn wide" data-act="ob-next">Einrichten (ca. 1 Minute)</button>';
   if (st === 1) {
-    const opts = Object.entries(SPLITS).map(([k, s]) => ['split:' + k, s.name, s.desc, s.rec.includes(d.days.length)]).concat([['old', PROG_TPL.old.name, PROG_TPL.old.desc + ' Trainingstage werden übernommen.', false]]);
-    const sel = ob.useOld ? 'old' : 'split:' + d.split;
+    const opts = Object.entries(SPLITS).map(([k, s]) => ['split:' + k, s.name, s.desc, s.rec.includes(d.days.length)]).concat([['tpl:wake3', PROG_TPL.wake3.name, PROG_TPL.wake3.desc, false], ['tpl:old', PROG_TPL.old.name, PROG_TPL.old.desc + ' Trainingstage werden übernommen.', false]]);
+    const sel = ob.tpl ? 'tpl:' + ob.tpl : 'split:' + d.split;
     return dots + '<h1>Training</h1><p class="lead">Wann und wie trainierst du?</p>' +
       '<div class="card"><h2>Trainingstage</h2><div class="chips">' + DAYS.map((n, i) => '<button class="chip" data-act="ob-day" data-v="' + i + '" aria-pressed="' + d.days.includes(i) + '">' + n + '</button>').join('') + '</div>' +
       '<p class="hint" style="margin-top:8px">' + d.days.length + ' Tage pro Woche. Lass zwischen zwei Einheiten möglichst einen Tag Pause.</p>' +
