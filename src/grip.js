@@ -59,7 +59,7 @@ function gripCard(type) {
 }
 function vGrip() {
   const p = S.p, due = gripDue(), w = seasonWeeks(), ph = seasonPhase();
-  let h = '<div class="top"><div><p class="eyebrow">' + (w !== null && w > 0 ? 'Wakeboard-Saison · noch ' + w + ' Wochen' : 'Wakeboard-Saison') + '</p><h1>Griffkraft</h1></div>' + (ph ? '<span class="tag">' + ph.n + '</span>' : '') + '</div>';
+  let h = '<div class="row" style="margin:0 0 10px"><span class="sub">' + (w !== null && w > 0 ? 'Wakeboard-Saison · noch ' + w + ' Wochen' : 'Wakeboard-Saison') + '</span>' + (ph ? '<span class="tag">Phase ' + ph.n + '</span>' : '') + '</div>';
   h += '<div class="card"><p class="eyebrow">' + (due.first ? 'Erster Test' : due.due ? 'Test fällig' : 'Nächster Test in ' + due.days + ' Tag' + (due.days === 1 ? '' : 'en')) + '</p><h3>Test-Paket: ' + p.gripSet.map(t => GTESTS[t].name).join(', ') + '</h3>' +
     '<p class="sub" style="margin-top:6px">Ausgeruht testen: an einem Ruhetag oder vor dem Training, nie nach Kreuzheben oder Klimmzügen. Vorher 5 min aufwärmen, zwischen den Tests mindestens 3 min Pause. Dauer ca. ' + (p.gripSet.length * 4 + 5) + ' min.</p>' +
     '<button class="btn wide" style="margin-top:10px" data-act="g-start">Geführten Test starten</button>' +

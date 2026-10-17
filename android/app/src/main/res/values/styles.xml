@@ -17,8 +17,8 @@
         <item name="android:windowTranslucentStatus">false</item>
         <item name="android:windowTranslucentNavigation">false</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-        <item name="android:statusBarColor">#1F55C4</item>
-        <item name="android:navigationBarColor">#12161A</item>
+        <item name="android:statusBarColor">#111514</item>
+        <item name="android:navigationBarColor">#1A1F1E</item>
     </style>
 
 

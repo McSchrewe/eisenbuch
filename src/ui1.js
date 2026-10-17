@@ -1,7 +1,7 @@
 'use strict';
 /* ===== Eisenbuch: Zustand, Speicher, Diagramme ===== */
 const LS = 'eisenbuch.v1';
-const S = {p:null, sessions:[], runs:[], grip:[], body:[], gt:null, active:null, tab:'today', ui:{}, rest:null, runT:{run:false, start:0, acc:0}, cloud:{mode:'local', err:null}};
+const S = {p:null, sessions:[], runs:[], grip:[], body:[], gt:null, active:null, tab:'train', ui:{}, rest:null, runT:{run:false, start:0, acc:0}, cloud:{mode:'local', err:null}};
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function tryLS(fn) { try { return fn(); } catch (e) { return null; } }
@@ -14,6 +14,7 @@ function normProfile(p) {
   if (!Array.isArray(p.custom)) p.custom = [];
   if (!p.remind || typeof p.remind !== 'object') p.remind = {on:false, lead:30};
   registerCustom(p);
+  ensurePrograms(p);
   if (!Array.isArray(p.gripSet) || !p.gripSet.length) p.gripSet = ['hang','towel','rep'];
   if (!p.block || typeof p.block !== 'object') p.block = d.block;
   if (!p.block.e1Start) p.block.e1Start = {};

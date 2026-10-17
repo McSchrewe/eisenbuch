@@ -18,7 +18,7 @@ const Nat = {
     LN.createChannel({id:'remind', name:'Trainings-Erinnerungen', description:'Erinnerung an geplante Einheiten und Griff-Tests', importance:4, visibility:1, vibration:true}).catch(() => {});
     LN.addListener('localNotificationActionPerformed', a => {
       const go = a && a.notification && a.notification.extra && a.notification.extra.go;
-      if (go && S.p && S.p.done) { S.tab = go; if (S.active) S.ui.woMin = false; render(); }
+      if (go && S.p && S.p.done) { S.tab = go; if (go === 'body') S.ui.bseg = 'grip'; if (S.active) S.ui.woMin = false; render(); }
     });
     this.P.APP.addListener('backButton', () => onBack());
     this.P.APP.addListener('appStateChange', st => { if (st.isActive) this.fg(); else this.bg(); });
@@ -32,7 +32,7 @@ const Nat = {
     this.flush();
     if (S.rest && S.active && S.rest.end > Date.now() + 1500) {
       const it = S.active.items.find(x => x.sets.some(s => !s.done)), nm = it ? EX[it.exId].name : 'nächste Übung';
-      this.P.LN.schedule({notifications:[{id:9001, title:'Pause vorbei', body:'Weiter mit: ' + nm, channelId:'rest', schedule:{at:new Date(S.rest.end), allowWhileIdle:true}, extra:{go:'today'}}]}).catch(() => {});
+      this.P.LN.schedule({notifications:[{id:9001, title:'Pause vorbei', body:'Weiter mit: ' + nm, channelId:'rest', schedule:{at:new Date(S.rest.end), allowWhileIdle:true}, extra:{go:'train'}}]}).catch(() => {});
     }
   },
   fg() {
@@ -66,20 +66,19 @@ const Nat = {
     const list = [], total = blockSessions(S.p), hm = (S.p.time || '18:00').split(':').map(Number);
     let n = S.p.block.n;
     for (let i = 0; i < 28 && list.length < 20; i++) {
-      const d = addDays(todayStr(), i), wd = (parseD(d).getDay() + 6) % 7;
-      if (!S.p.days.includes(wd)) continue;
+      const d = addDays(todayStr(), i), pl = planForDate(S.p, d); if (!pl) continue;
       if (i === 0 && S.sessions.some(s => s.date === d)) continue;
       const at = parseD(d); at.setHours(hm[0], hm[1], 0, 0); at.setMinutes(at.getMinutes() - (r.lead || 0));
       if (at.getTime() < Date.now() + 60000) continue;
       let body = 'Block geschafft: Auswertung und nächster Block warten.';
-      if (n < total) { const w = buildWorkout(S.p, S.sessions, n); body = w.name + ' · ' + phaseText(w.pr) + ' · ca. ' + w.est + ' min'; }
-      list.push({id:1000 + list.length, title:r.lead ? 'Training um ' + S.p.time + ' Uhr' : 'Zeit fürs Training', body, channelId:'remind', schedule:{at, allowWhileIdle:true}, extra:{go:'today'}});
+      if (n < total) { const w = buildWorkout(S.p, S.sessions, n, pl.id); body = w.name + ' · ' + phaseText(w.pr) + ' · ca. ' + w.est + ' min'; }
+      list.push({id:1000 + list.length, title:r.lead ? 'Training um ' + S.p.time + ' Uhr' : 'Zeit fürs Training', body, channelId:'remind', schedule:{at, allowWhileIdle:true}, extra:{go:'train'}});
       n++;
     }
     const gd = gripDue();
     if (!gd.first) {
       const day = gd.due ? addDays(todayStr(), 1) : addDays(gd.last, S.p.gripEvery), at = parseD(day); at.setHours(9, 0, 0, 0);
-      list.push({id:1100, title:'Griff-Test fällig', body:'Dead Hang, Handtuch-Hang & Co.: ausgeruht testen, ca. 15 min.', channelId:'remind', schedule:{at, allowWhileIdle:true}, extra:{go:'grip'}});
+      list.push({id:1100, title:'Griff-Test fällig', body:'Dead Hang, Handtuch-Hang & Co.: ausgeruht testen, ca. 15 min.', channelId:'remind', schedule:{at, allowWhileIdle:true}, extra:{go:'body'}});
     }
     if (list.length) LN.schedule({notifications:list}).catch(() => {});
   }
@@ -90,6 +89,8 @@ function reschedSoon() { clearTimeout(reschedT); reschedT = setTimeout(() => Nat
 function onBack() {
   if (S.ui.sheet) { if (S.ui.sheet.t === 'gtest' && S.gt && (S.gt.st === 'run' || S.gt.st === 'cd')) return; ACT.close(); return; }
   if (S.active && !S.ui.woMin) { S.ui.woMin = true; render(); return; }
-  if (S.tab !== 'today') { ACT.tab('today'); return; }
+  if (S.ui.pv) { ACT['pl-back'](); return; }
+  if (S.ui.more) { ACT['more-back'](); return; }
+  if (S.tab !== 'train') { ACT.tab('train'); return; }
   if (Nat.P) Nat.P.APP.minimizeApp().catch(() => {});
 }

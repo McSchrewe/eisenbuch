@@ -1,7 +1,7 @@
 /* Logik-Tests ohne Browser: simuliert zwei komplette Blöcke für jedes Modell und jeden Split */
 const fs = require('fs'), vm = require('vm'), path = require('path'), assert = require('assert');
-const code = fs.readFileSync(path.join(__dirname, '../src/logic.js'), 'utf8') +
-  ';globalThis.T={EX,EXLIST,TPL,SPLITS,MODELS,MAIN_LIFTS,GRIP_ROT,defaultProfile,buildWorkout,blockSessions,applyProgress,closeBlock,startNextBlock,estimateFromBW,EPLEY,plateCalc,warmups};';
+const code = fs.readFileSync(path.join(__dirname, '../src/logic.js'), 'utf8') + fs.readFileSync(path.join(__dirname, '../src/plans.js'), 'utf8') +
+  ';globalThis.T={EX,EXLIST,TPL,SPLITS,MODELS,MAIN_LIFTS,GRIP_ROT,defaultProfile,buildWorkout,PROG_TPL,programFromTemplate,ensurePrograms,nextPlan,activeProgram,blockSessions,applyProgress,closeBlock,startNextBlock,estimateFromBW,EPLEY,plateCalc,warmups};';
 const ctx = {console, Intl, Math, Date}; vm.createContext(ctx); vm.runInContext(code, ctx); const T = ctx.T;
 for (const t of Object.values(T.TPL)) t.ex.forEach(id => assert(T.EX[id], 'Übung fehlt: ' + id));
 T.GRIP_ROT.forEach(id => assert(T.EX[id], 'Griff-Übung fehlt: ' + id));
@@ -24,6 +24,9 @@ for (const model of Object.keys(T.MODELS)) for (const split of Object.keys(T.SPL
   const gain = p.e1.bankdruecken / start - 1;
   assert(gain > 0 && gain < 0.15, `Bankdrücken-Steigerung nach 2 Blöcken unplausibel (${model}/${split}/${d}): ${(gain * 100).toFixed(1)} %`);
 }
+for (const k of Object.keys(T.PROG_TPL)) { const pg = T.programFromTemplate(k); pg.plans.forEach(pl => assert(pl.items.length || k === 'empty', 'Vorlage leer: ' + k)); T.PROG_TPL[k].plans.forEach(x => Array.isArray(x[2]) && x[2].forEach(id => assert(T.EX[id], 'Vorlagen-Übung fehlt: ' + id))); }
+{ const p = T.defaultProfile(); p.days = [0, 2, 4]; T.ensurePrograms(p); assert.strictEqual(T.activeProgram(p).plans.length, 3); assert(T.nextPlan(p, []).plan, 'keine Auto-Auswahl'); }
+{ const p = T.defaultProfile(); p.programs = [T.programFromTemplate('old')]; p.prog = p.programs[0].id; T.ensurePrograms(p); assert.strictEqual(p.days.join(), '0,2,4'); const w = T.buildWorkout(p, [], 0, p.programs[0].plans[2].id); assert.strictEqual(w.name, 'Lower FB'); }
 assert.strictEqual(Math.round(T.EPLEY(100, 5) * 10) / 10, 116.7);
 assert.deepStrictEqual(JSON.parse(JSON.stringify(T.plateCalc(100))).out, [[25, 1], [15, 1]]);
 console.log('OK:', T.EXLIST.length, 'Übungen,', n, 'simulierte Einheiten, alle Prüfungen bestanden');

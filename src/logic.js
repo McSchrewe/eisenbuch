@@ -395,18 +395,22 @@ function exPlan(p, id, slot, pr, sessions) {
     desc:sets + ' Sätze × ' + rng[0] + '–' + rng[1] + ' Wdh.'};
 }
 function templateIds(p, tid) { return TPL[tid].ex.map((id, i) => (p.swaps && p.swaps[tid + ':' + i]) || id); }
-function buildWorkout(p, sessions, n) {
+/* Ein Training aus einem Plan bauen. Ohne planId wählt die App automatisch (siehe nextPlan). */
+function buildWorkout(p, sessions, n, planId) {
   let pr = prescribe(p, n); if (!pr) return null;
   /* Wiedereinstieg: nach mindestens 14 Tagen Pause einmalig 10 % leichter */
   const lastS = sessions.length ? sessions[sessions.length - 1] : null;
   if (lastS && !pr.deload && (parseD(todayStr()) - parseD(lastS.date)) / 864e5 >= 14) pr = {...pr, pct:Math.round(pr.pct * 0.9 * 1000) / 1000, label:pr.label + ' · Wiedereinstieg', re:true};
-  const sp = SPLITS[resolveSplit(p)], tid = sp.cycle[n % sp.cycle.length];
-  let N = exCount(p.minutes || 60); if (pr.deload) N = Math.max(3, Math.ceil(N * 0.7));
-  const ids = templateIds(p, tid).slice(0, N);
+  ensurePrograms(p);
+  const plan = (planId && findPlan(p, planId)) || (nextPlan(p, sessions) || {}).plan;
+  if (!plan) return {planId:null, tplId:null, name:'Freies Training', pr, items:[], est:5};
+  let ids = plan.items.map(it => it.exId);
+  if (pr.deload && ids.length > 3) ids = ids.slice(0, Math.max(3, Math.ceil(ids.length * 0.7)));
   const items = ids.map((id, i) => exPlan(p, id, i, pr, sessions));
-  if (p.wake) items.push(exPlan(p, GRIP_ROT[n % GRIP_ROT.length], 99, pr, sessions)); /* Wakeboard-Fokus: Griff-Finisher */
+  /* Wakeboard-Fokus: Griff-Finisher, außer der Plan hat schon eine Unterarm-Übung */
+  if (p.wake && !ids.some(id => EX[id].m === 'Unterarme')) items.push(exPlan(p, GRIP_ROT[n % GRIP_ROT.length], 99, pr, sessions));
   const est = 5 + items.reduce((a, it) => a + it.sets * (it.mode === 'pct' ? 3.5 : 2.3), 0);
-  return {tplId:tid, name:TPL[tid].name, pr, items, est:Math.round(est / 5) * 5};
+  return {planId:plan.id, tplId:plan.id, name:plan.name, color:plan.color, pr, items, est:Math.round(est / 5) * 5};
 }
 
 /* ===== Fortschritt nach einer Einheit ===== */

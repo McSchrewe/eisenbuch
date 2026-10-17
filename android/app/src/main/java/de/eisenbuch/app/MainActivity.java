@@ -25,7 +25,7 @@ public class MainActivity extends BridgeActivity {
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS | WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
-        getWindow().setStatusBarColor(Color.parseColor("#1F55C4"));
-        getWindow().setNavigationBarColor(Color.parseColor("#12161A"));
+        getWindow().setStatusBarColor(Color.parseColor("#111514"));
+        getWindow().setNavigationBarColor(Color.parseColor("#1A1F1E"));
     }
 }

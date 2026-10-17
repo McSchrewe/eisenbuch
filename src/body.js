@@ -95,16 +95,17 @@ function registerCustom(p) {
     EX[e.id] = e; if (!c.hidden) EXLIST.push(e); /* gelöschte bleiben in EX, damit alte Einheiten lesbar bleiben */
   });
 }
-function customHTML() {
-  return '<h2>Eigene Übung</h2><label class="lab" for="cx-name">Name</label><input type="text" id="cx-name" placeholder="z. B. Rudern am Wakeboard-Handle">' +
+function customHTML(name) {
+  return '<h2>Eigene Übung</h2><label class="lab" for="cx-name">Name</label><input type="text" id="cx-name" value="' + esc(name || '') + '" placeholder="z. B. Rudern am Wakeboard-Handle">' +
     '<div class="pair"><div><label class="lab" for="cx-m">Muskelgruppe</label><select id="cx-m">' + MUSCLES.map(m => '<option>' + m + '</option>').join('') + '</select></div>' +
     '<div><label class="lab" for="cx-eq">Gerät</label><select id="cx-eq">' + Object.entries(EQUIP).map(([k, v]) => '<option value="' + k + '">' + v + '</option>').join('') + '</select></div></div>' +
     '<label class="lab" for="cx-type">Art</label><select id="cx-type"><option value="w">Gewicht × Wiederholungen</option><option value="c">Grundübung (mit 1RM und Prozent-Vorgaben)</option><option value="t">Halten auf Zeit</option></select>' +
     '<button class="btn wide" style="margin-top:12px" data-act="cx-save">Übung anlegen</button><button class="btn ghost wide" style="margin-top:8px" data-act="close">Abbrechen</button>';
 }
 function customSave() {
-  const name = $('#cx-name').value.trim(); if (name.length < 2) { toast('Namen eintragen.'); return; }
+  const name = $('#cx-name').value.trim(); if (name.length < 2) { toast('Namen eintragen.'); return null; }
   const type = $('#cx-type').value, m = $('#cx-m').value;
   const c = {id:'c-' + Date.now().toString(36), name, m, eq:$('#cx-eq').value, c:type === 'c', t:type === 't', l:['Quadrizeps','Beinbeuger','Gesäß','Waden'].includes(m)};
-  S.p.custom = (S.p.custom || []).concat([c]); registerCustom(S.p); saveProfile(); S.ui.sheet = null; render(); toast('Übung angelegt: ' + name);
+  S.p.custom = (S.p.custom || []).concat([c]); registerCustom(S.p); saveProfile();
+  return c.id;
 }

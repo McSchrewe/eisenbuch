@@ -9,10 +9,11 @@ let wakeLock = null;
 function wake() { try { if (navigator.wakeLock && !wakeLock) navigator.wakeLock.request('screen').then(l => { wakeLock = l; l.addEventListener('release', () => { wakeLock = null; }); }).catch(() => {}); } catch (e) {} }
 function unwake() { try { if (wakeLock) wakeLock.release(); } catch (e) {} wakeLock = null; }
 
-function startWorkout(free) {
-  const p = S.p;
-  const w = free ? {tplId:null, name:'Freies Training', pr:{week:0, label:'Frei', pct:0.75, reps:8, sets:3, deload:false}, items:[]} : buildWorkout(p, S.sessions, p.block.n);
-  S.active = {id:uid('s'), start:Date.now(), date:todayStr(), tplId:w.tplId, name:w.name, n:free ? null : p.block.n, pr:w.pr, block:p.block.no, items:w.items.map(itemFromPlan)};
+function startWorkout(free, planId) {
+  const p = S.p, total = blockSessions(p), over = p.block.n >= total;
+  /* Nach Blockende ohne Auswertung: mit den Werten der letzten Woche, ohne den Blockzähler zu erhöhen */
+  const w = free ? {planId:null, tplId:null, name:'Freies Training', pr:{week:0, label:'Frei', pct:0.75, reps:8, sets:3, deload:false}, items:[]} : buildWorkout(p, S.sessions, over ? total - 1 : p.block.n, planId);
+  S.active = {id:uid('s'), start:Date.now(), date:todayStr(), planId:w.planId, tplId:w.tplId, name:w.name, n:free || over ? null : p.block.n, pr:w.pr, block:p.block.no, items:w.items.map(itemFromPlan)};
   S.ui.woMin = false; saveActive(); render(); wake();
   if (free) openPicker({mode:'wadd'});
 }
@@ -20,7 +21,7 @@ function finishWorkout() {
   const a = S.active, p = S.p, end = Date.now();
   const ex = a.items.map(it => ({exId:it.exId, plan:it.plan, feel:it.feel, sets:it.sets.filter(s => s.done).map(s => ({kg:s.kg || 0, reps:s.reps || 0, done:true, warm:!!s.warm}))})).filter(x => x.sets.length);
   if (!ex.length) { toast('Noch kein Satz abgehakt. Hake erledigte Sätze mit ✓ ab oder verwirf das Training.'); return; }
-  const sess = {id:a.id, date:a.date, start:a.start, end, dur:end - a.start, tplId:a.tplId, name:a.name, block:a.block, week:a.pr.week, label:a.pr.label, deload:!!a.pr.deload, n:a.n, exercises:ex, note:(a.note || '').trim()};
+  const sess = {id:a.id, date:a.date, start:a.start, end, dur:end - a.start, planId:a.planId || null, tplId:a.tplId, name:a.name, block:a.block, week:a.pr.week, label:a.pr.label, deload:!!a.pr.deload, n:a.n, exercises:ex, note:(a.note || '').trim()};
   sess.before = {e1:{...p.e1}, adj:{...p.adj}, n:p.block.n, no:p.block.no}; /* für sauberes Rückgängigmachen beim Löschen */
   const prs = prCheck(S.sessions, sess), ch = applyProgress(p, sess);
   S.sessions.push(sess);
@@ -88,9 +89,9 @@ function sheetHTML() {
   const sh = S.ui.sheet, p = S.p; if (!sh) return '';
   const close = '<button class="btn ghost wide" style="margin-top:12px" data-act="close">Schließen</button>';
   if (sh.t === 'pick') {
-    return '<h2>' + (sh.mode === 'wadd' ? 'Übung hinzufügen' : 'Übung tauschen') + '</h2><input type="search" data-in="pq" placeholder="Suchen" aria-label="Übung suchen" value="' + esc(S.ui.pq) + '">' +
+    return '<h2>' + (sh.mode === 'wadd' || sh.mode === 'pladd' ? 'Übung hinzufügen' : 'Übung tauschen') + '</h2><input type="search" data-in="pq" placeholder="Suchen" aria-label="Übung suchen" value="' + esc(S.ui.pq) + '">' +
       '<div class="chips" style="margin:10px 0">' + ['', ...MUSCLES].map(m => '<button class="chip" data-act="pm" data-v="' + m + '" aria-pressed="' + (S.ui.pm === m) + '">' + (m || 'Alle') + '</button>').join('') + '</div>' +
-      '<div id="picklist">' + exListHTML(S.ui.pq, S.ui.pm, 'pick') + '</div>' + close;
+      '<div id="picklist" class="list exlist">' + exListHTML(S.ui.pq, S.ui.pm, 'pick') + '</div>' + close;
   }
   if (sh.t === 'ex') {
     const e = EX[sh.id], hs = history(S.sessions, sh.id);
@@ -154,7 +155,15 @@ function sheetHTML() {
   if (sh.t === 'glist') return gListHTML(sh.type);
   if (sh.t === 'ggoal') { const T = GTESTS[sh.type], g = p.gripGoal[sh.type]; return '<h2>Ziel: ' + T.name + '</h2><p>Setz dir einen Wert bis zum Saisonstart. Die App zeigt den Fortschritt als Balken.</p><div class="fld"><input id="gg-v" inputmode="decimal" value="' + (g ? fmt(g) : '') + '" placeholder="Zielwert"><span>' + T.unit + '</span></div><button class="btn wide" style="margin-top:12px" data-act="g-goal-save" data-v="' + sh.type + '">Speichern</button>' + (g ? '<button class="btn ghost wide" style="margin-top:8px" data-act="g-goal-del" data-v="' + sh.type + '">Ziel entfernen</button>' : '') + close; }
   if (sh.t === 'bgoal') return '<h2>Zielgewicht</h2><div class="fld"><input id="bg-v" inputmode="decimal" value="' + (p.bwGoal ? fmt(p.bwGoal) : '') + '" placeholder="z. B. 80"><span>kg</span></div><p class="hint">Leer lassen und speichern entfernt das Ziel.</p><button class="btn wide" style="margin-top:12px" data-act="bgoal-save">Speichern</button>' + close;
-  if (sh.t === 'cx') return customHTML();
+  if (sh.t === 'cx') return customHTML(sh.name || '');
+  if (sh.t === 'prog') {
+    const ap = activeProgram(p);
+    return '<h2>Programme</h2><p class="hint">Das aktive Programm bestimmt, welche Pläne die App automatisch vorschlägt.</p><div class="list">' +
+      p.programs.map(pg => '<button class="prow" data-act="prog-sel" data-v="' + pg.id + '"><span class="dayc" style="--c:' + (pg.id === ap.id ? 'var(--acc)' : 'var(--soft)') + '">' + (pg.id === ap.id ? I(ICONS.check) : pg.plans.length) + '</span><span class="pt"><b>' + esc(pg.name) + '</b><small>' + pg.plans.map(x => esc(x.name)).join(' · ') + '</small></span></button>').join('') + '</div>' +
+      '<label class="lab" for="pg-name">Name des aktiven Programms</label><input type="text" id="pg-name" data-chg="progname" value="' + esc(ap.name) + '">' +
+      '<h3 style="margin-top:16px">Neues Programm</h3><div class="list">' + Object.entries(PROG_TPL).map(([k, t]) => '<button class="prow" data-act="prog-tpl" data-v="' + k + '"><span class="dayc" style="--c:var(--soft)">' + I(ICONS.plus) + '</span><span class="pt"><b>' + esc(t.name) + '</b><small>' + esc(t.desc) + '</small></span></button>').join('') + '</div>' +
+      (p.programs.length > 1 ? '<div class="row" style="margin-top:14px"><span class="sub">Aktives Programm löschen</span>' + (sh.del ? '<button class="btn sm danger" data-act="prog-del2">Wirklich löschen</button>' : '<button class="btn sm ghost" data-act="prog-del1">Löschen</button>') + '</div>' : '') + close;
+  }
   if (sh.t === 'text') return '<h2>' + esc(sh.title) + '</h2><p class="hint">Download ist hier nicht verfügbar. Kopiere den Text und speichere ihn als Datei.</p><textarea id="exptext" readonly style="min-height:200px">' + esc(sh.text) + '</textarea><button class="btn wide" style="margin-top:8px" data-act="copy">Kopieren</button>' + close;
   return close;
 }
@@ -213,6 +222,9 @@ function importFile(f) {
 }
 
 /* ----- Planänderungen ----- */
+/* Änderungen an Tagen/Programm/Modell: aktuelle Blockwoche beibehalten */
+function remapBlock(fn) { changePlan(p => { fn(p); syncDays(p); }); }
+function movePlanItem(i, d) { const pl = findPlan(S.p, S.ui.pv), j = i + d; if (j < 0 || j >= pl.items.length) return; const t = pl.items[i]; pl.items[i] = pl.items[j]; pl.items[j] = t; saveProfile(); render(); }
 function changePlan(fn) {
   const p = S.p, oldD = p.days.length, wasEnd = p.block.n >= blockSessions(p), wi = Math.floor(p.block.n / oldD);
   fn(p);
@@ -225,17 +237,40 @@ const ACT = {
   'ob-next'() { S.ui.ob.step++; render(); window.scrollTo(0, 0); },
   'ob-back'() { S.ui.ob.step--; render(); window.scrollTo(0, 0); },
   'ob-day'(v) { const d = S.ui.ob.d, i = +v, k = d.days.indexOf(i); if (k >= 0) { if (d.days.length > 2) d.days.splice(k, 1); else toast('Mindestens 2 Trainingstage.'); } else if (d.days.length < 6) d.days.push(i); else toast('Höchstens 6 Trainingstage.'); d.days.sort(); if (!S.ui.ob.splitPicked) d.split = resolveSplit({...d, split:'auto'}); render(); },
-  'ob-split'(v) { S.ui.ob.d.split = v; S.ui.ob.splitPicked = true; render(); },
+  'ob-split'(v) { const ob = S.ui.ob; ob.useOld = v === 'old'; if (!ob.useOld) ob.d.split = v.split(':')[1]; ob.splitPicked = true; render(); },
   'ob-model'(v) { S.ui.ob.d.model = v; render(); },
   'ob-finish'() {
     const ob = S.ui.ob, d = ob.d;
     MAIN_LIFTS.forEach(id => { const x = obE1(id); if (x) { d.e1[id] = x.v; d.src[id] = x.src; } });
+    if (ob.useOld) { const pg = programFromTemplate('old'); pg.plans.forEach((pl, i) => { pl.days = d.days[i] !== undefined ? [d.days[i]] : []; }); d.programs = [pg]; d.prog = pg.id; }
     d.done = true; d.block = {n:0, no:1, e1Start:{...d.e1}, started:todayStr()};
-    S.p = normProfile(d); S.ui.ob = null; S.tab = 'today'; saveProfile(); render(); window.scrollTo(0, 0);
-    toast('Plan erstellt. Deine erste Einheit steht unter „Heute“.');
+    S.p = normProfile(d); S.ui.ob = null; S.tab = 'train'; saveProfile(); render(); window.scrollTo(0, 0);
+    toast('Fertig. Dein Training für heute steht ganz oben.');
   },
-  tab(v) { S.tab = v; S.ui.wipe = false; tryLS(() => localStorage.setItem(LS + '.tab', v)); render(); window.scrollTo(0, 0); },
+  tab(v) { if (S.tab === v) { S.ui.pv = null; S.ui.more = null; } S.tab = v; S.ui.wipe = false; S.ui.pedit = false; tryLS(() => localStorage.setItem(LS + '.tab', v)); render(); window.scrollTo(0, 0); },
   'wo-start'() { startWorkout(false); },
+  'pl-start'(v) { if (S.active) { S.ui.woMin = false; render(); return; } startWorkout(false, v || undefined); },
+  'pl-open'(v) { S.ui.pv = v; S.ui.pedit = false; S.ui.pdel = false; render(); window.scrollTo(0, 0); },
+  'pl-back'() { S.ui.pv = null; S.ui.pedit = false; render(); window.scrollTo(0, 0); },
+  'pl-edit'() { S.ui.pedit = !S.ui.pedit; S.ui.pdel = false; render(); },
+  'pl-new'() { const pg = activeProgram(S.p), pl = {id:pid('pl'), name:'Neuer Plan', days:[], color:PLAN_COLORS[pg.plans.length % PLAN_COLORS.length], items:[]}; pg.plans.push(pl); saveProfile(); S.ui.pv = pl.id; S.ui.pedit = true; render(); window.scrollTo(0, 0); },
+  'pl-day'(v) { remapBlock(p => { const pl = findPlan(p, S.ui.pv), i = +v, k = pl.days.indexOf(i); if (k >= 0) pl.days.splice(k, 1); else pl.days.push(i); pl.days.sort(); }); },
+  'pl-up'(v) { movePlanItem(+v, -1); },
+  'pl-down'(v) { movePlanItem(+v, 1); },
+  'pl-rm'(v) { const pl = findPlan(S.p, S.ui.pv); pl.items.splice(+v, 1); saveProfile(); render(); },
+  'pl-swap'(v) { const pl = findPlan(S.p, S.ui.pv); openPicker({mode:'plswap', i:+v, m:EX[pl.items[+v].exId].m}); },
+  'pl-add'() { openPicker({mode:'pladd'}); },
+  'pl-del1'() { S.ui.pdel = true; render(); },
+  'pl-del2'() { remapBlock(p => { const pg = activeProgram(p); pg.plans = pg.plans.filter(x => x.id !== S.ui.pv); }); S.ui.pv = null; S.ui.pedit = false; render(); toast('Plan gelöscht.'); },
+  'prog-open'() { S.ui.sheet = {t:'prog'}; renderSheet(); },
+  'prog-sel'(v) { remapBlock(p => { p.prog = v; }); S.ui.sheet = null; renderSheet(); toast('Aktiv: ' + activeProgram(S.p).name); },
+  'prog-tpl'(v) { const pg = programFromTemplate(v); remapBlock(p => { p.programs.push(pg); p.prog = pg.id; }); S.ui.sheet = null; S.ui.pv = null; render(); toast('Programm angelegt: ' + pg.name + (v === 'empty' ? '. Leg jetzt deinen ersten Plan an.' : '')); },
+  'prog-del1'() { S.ui.sheet.del = true; renderSheet(); },
+  'prog-del2'() { remapBlock(p => { p.programs = p.programs.filter(x => x.id !== p.prog); p.prog = p.programs[0].id; }); S.ui.sheet = null; render(); },
+  'more-go'(v) { S.tab = 'more'; S.ui.more = v; render(); window.scrollTo(0, 0); },
+  'more-back'() { S.ui.more = null; render(); window.scrollTo(0, 0); },
+  sseg(v) { S.ui.sseg = v; render(); },
+  bseg(v) { S.ui.bseg = v; render(); },
   'wo-free'() { startWorkout(true); },
   'wo-open'() { S.ui.woMin = false; render(); wake(); },
   'wo-min'() { S.ui.woMin = true; render(); },
@@ -271,6 +306,8 @@ const ACT = {
   pick(v) {
     const sh = S.ui.sheet, a = S.active;
     if (sh.mode === 'pswap') { S.p.swaps[sh.key] = v; saveProfile(); toast('Getauscht: ' + EX[v].name); }
+    else if (sh.mode === 'pladd') { findPlan(S.p, S.ui.pv).items.push({exId:v}); saveProfile(); toast(EX[v].name + ' hinzugefügt.'); }
+    else if (sh.mode === 'plswap') { findPlan(S.p, S.ui.pv).items[sh.i].exId = v; saveProfile(); toast('Getauscht: ' + EX[v].name); }
     else if (sh.mode === 'wswap') { const old = a.items[sh.i]; a.items[sh.i] = itemFromPlan(exPlan(S.p, v, old.plan.slot, a.pr, S.sessions)); saveActive(); }
     else if (sh.mode === 'wadd') { a.items.push(itemFromPlan(exPlan(S.p, v, a.items.length, a.pr, S.sessions))); saveActive(); }
     S.ui.sheet = null; render();
@@ -325,13 +362,18 @@ const ACT = {
   'exp-json'() { exportJSON(); },
   hseg(v) { S.ui.hseg = v; render(); },
   'b-save'() { bodySaveAct(); },
-  'b-quick'() { S.tab = 'hist'; S.ui.hseg = 'body'; S.ui.bf = {date:todayStr()}; render(); window.scrollTo(0, 0); setTimeout(() => { const k = $('#bf-kg'); if (k) k.focus(); }, 50); },
+  'b-quick'() { S.tab = 'body'; S.ui.bseg = ''; S.ui.bf = {date:todayStr()}; render(); window.scrollTo(0, 0); setTimeout(() => { const k = $('#bf-kg'); if (k) k.focus(); }, 50); },
   'b-del'(v, t) { if (t.dataset.sure !== '1') { t.dataset.sure = '1'; t.textContent = 'Sicher?'; t.style.color = 'var(--heavy)'; return; } S.p.tomb.push(v); saveProfile(); S.body = S.body.filter(b => b.id !== v); lsSave(); Cloud.del('body', v); render(); },
   'b-goal'() { S.ui.sheet = {t:'bgoal'}; renderSheet(); },
   'bgoal-save'() { const x = parseNum($('#bg-v').value); S.p.bwGoal = x > 30 ? x : null; saveProfile(); S.ui.sheet = null; render(); },
   'exnote-save'(v) { const t = $('#exnote').value.trim(); if (t) S.p.exNotes[v] = t; else delete S.p.exNotes[v]; saveProfile(); toast('Notiz gespeichert. Sie erscheint im Training bei dieser Übung.'); },
-  'cx-new'() { S.ui.sheet = {t:'cx'}; renderSheet(); },
-  'cx-save'() { customSave(); },
+  'cx-new'(v) { S.ui.cxAfter = v === 'pick' ? S.ui.sheet : null; S.ui.sheet = {t:'cx', name:v === 'pick' ? S.ui.pq : ''}; renderSheet(); },
+  'cx-save'() {
+    const id = customSave(); if (!id) return;
+    const after = S.ui.cxAfter; S.ui.cxAfter = null;
+    if (after) { S.ui.sheet = after; ACT.pick(id); toast('Übung angelegt und übernommen: ' + EX[id].name); }
+    else { S.ui.sheet = null; render(); toast('Übung angelegt: ' + EX[id].name); }
+  },
   'cx-del'(v, t) { if (t.dataset.sure !== '1') { t.dataset.sure = '1'; t.textContent = 'Wirklich löschen?'; return; } const c = S.p.custom.find(x => x.id === v); if (c) c.hidden = true; const i = EXLIST.findIndex(e => e.id === v); if (i >= 0) EXLIST.splice(i, 1); saveProfile(); S.ui.sheet = null; render(); toast('Übung gelöscht. Alte Einträge bleiben erhalten.'); },
   async remind() {
     if (!S.p.remind.on) { const ok = await Nat.perm(); if (!ok) { toast('Benachrichtigungen sind für Eisenbuch blockiert. In den Android-Einstellungen erlauben.'); return; } }
@@ -358,7 +400,7 @@ const ACT = {
     S.sessions.forEach(s => Cloud.del('sessions', s.id)); S.runs.forEach(r => Cloud.del('runs', r.id)); Cloud.del('meta', 'profile');
     S.grip.forEach(g => Cloud.del('grip', g.id));
     S.body.forEach(b => Cloud.del('body', b.id));
-    S.p = null; S.sessions = []; S.runs = []; S.grip = []; S.body = []; S.active = null; S.ui = {}; S.runT = {run:false, start:0, acc:0}; saveRunT(); S.tab = 'today'; tryLS(() => { localStorage.removeItem(LS); localStorage.removeItem(LS + '.active'); }); render();
+    S.p = null; S.sessions = []; S.runs = []; S.grip = []; S.body = []; S.active = null; S.ui = {}; S.runT = {run:false, start:0, acc:0}; saveRunT(); S.tab = 'train'; tryLS(() => { localStorage.removeItem(LS); localStorage.removeItem(LS + '.active'); }); render();
   },
   copy() { const ta = $('#exptext'); try { navigator.clipboard.writeText(ta.value).then(() => toast('Kopiert.'), () => { ta.select(); }); } catch (e) { ta.select(); } },
   close() { if (S.gt) { clearInterval(GT.timer); S.gt = null; } S.ui.sheet = null; renderSheet(); }
@@ -400,6 +442,8 @@ document.addEventListener('change', ev => {
   if (c === 'bfdate') { S.ui.bf.date = t.value; render(); }
   if (c === 'gripEvery') { S.p.gripEvery = +t.value; saveProfile(); render(); }
   if (c === 'season') { S.p.season = t.value; saveProfile(); render(); }
+  if (c === 'plname') { const pl = findPlan(S.p, t.dataset.v); if (pl && t.value.trim()) { pl.name = t.value.trim(); saveProfile(); render(); } }
+  if (c === 'progname') { if (t.value.trim()) { activeProgram(S.p).name = t.value.trim(); saveProfile(); render(); } }
   if (c === 'gmtype') { S.ui.gm.type = t.value; renderSheet(); }
 });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && (S.active && !S.ui.woMin || S.runT.run)) wake(); });
@@ -408,8 +452,9 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 function render() {
   const ob = !S.p || !S.p.done;
   $('#tabs').hidden = ob;
-  $('#view').innerHTML = ob ? vOnboard() : ({today:vToday, plan:vPlan, grip:vGrip, run:vRun, hist:vHist}[S.tab] || vToday)();
-  $('#tabs').innerHTML = TABS.map(t => '<button data-act="tab" data-v="' + t[0] + '"' + (S.tab === t[0] ? ' aria-current="page"' : '') + '><svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS[t[0]] + '</svg><span>' + t[1] + '</span></button>').join('');
+  const V = {train:() => S.ui.pv ? vPlanDetail(S.ui.pv) : vTrain(), stats:vStats, hist:vHist, body:vBodyTab, more:vMore};
+  $('#view').innerHTML = ob ? vOnboard() : (V[S.tab] || V.train)();
+  $('#tabs').innerHTML = TABS.map(t => '<button data-act="tab" data-v="' + t[0] + '"' + (S.tab === t[0] ? ' aria-current="page"' : '') + '><span class="ti">' + I(ICONS[t[0]]) + '</span><span>' + t[1] + '</span></button>').join('');
   renderWorkout(); renderSheet(); renderRest(); bindChart();
   if (!render.ok) { render.ok = true; console.log('EB_READY'); }
 }
@@ -419,10 +464,17 @@ setInterval(() => {
   if (S.rest) renderRest();
 }, 500);
 
+/* Einheiten aus Version 1.x (nur tplId) dem passenden Plan zuordnen */
+function linkOldSessions() {
+  if (!S.p || !S.p.programs) return;
+  S.sessions.forEach(s => { if (s.planId || !s.tplId || !TPL[s.tplId]) return; for (const pg of S.p.programs) { const pl = pg.plans.find(x => x.name === TPL[s.tplId].name); if (pl) { s.planId = pl.id; break; } } });
+}
 Nat.init();
 lsLoad();
+linkOldSessions();
 S.tab = tryLS(() => localStorage.getItem(LS + '.tab')) || 'today';
-if (S.tab === 'ex') { S.tab = 'hist'; S.ui.hseg = 'ex'; }
+/* alte Bereichsnamen aus Version 1.x */
+({today:() => { S.tab = 'train'; }, plan:() => { S.tab = 'more'; S.ui.more = 'peri'; }, grip:() => { S.tab = 'body'; S.ui.bseg = 'grip'; }, run:() => { S.tab = 'more'; S.ui.more = 'run'; }, ex:() => { S.tab = 'stats'; S.ui.sseg = 'ex'; }}[S.tab] || (() => {}))();
 render();
 if (NATIVE) {
   /* Falls der WebView-Speicher leer ist (z. B. nach Wiederherstellung), Sicherungsdatei laden */
