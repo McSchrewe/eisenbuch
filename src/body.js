@@ -16,23 +16,29 @@ function latestBody() { const t = bodyTrend(); return t.length ? t[t.length - 1]
 function vBody() {
   const tr = bodyTrend(), last = tr[tr.length - 1], f = S.ui.bf || (S.ui.bf = {date:todayStr()});
   const today = S.body.find(x => x.date === f.date);
-  let h = '<div class="card"><h2>Messung eintragen</h2><div class="pair"><div><label class="lab" for="bf-date">Datum</label><input type="date" id="bf-date" value="' + esc(f.date) + '" data-chg="bfdate"></div>' +
+  let entry = '<div class="card"><h2>Messung eintragen</h2><div class="pair"><div><label class="lab" for="bf-date">Datum</label><input type="date" id="bf-date" value="' + esc(f.date) + '" data-chg="bfdate"></div>' +
     '<div><label class="lab" for="bf-kg">Gewicht (kg)</label><input type="text" inputmode="decimal" id="bf-kg" value="' + (today ? fmt(today.kg) : '') + '" placeholder="z. B. 82,4"></div>' +
     '<div><label class="lab" for="bf-bf">Körperfett (%, optional)</label><input type="text" inputmode="decimal" id="bf-bf" value="' + (today && today.bf ? fmt(today.bf) : '') + '"></div>' +
     '<div><label class="lab" for="bf-w">Taille (cm, optional)</label><input type="text" inputmode="decimal" id="bf-w" value="' + (today && today.waist ? fmt(today.waist) : '') + '"></div></div>' +
     '<p class="hint" style="margin-top:8px">Am besten morgens nach dem Aufstehen wiegen, immer unter denselben Bedingungen. Ein Eintrag pro Tag, ein zweiter überschreibt den ersten.</p>' +
     '<button class="btn wide" style="margin-top:8px" data-act="b-save">' + (today ? 'Eintrag aktualisieren' : 'Speichern') + '</button></div>';
-  if (!tr.length) return h + '<div class="empty">Noch keine Messung. Die Kurve zeigt später den 7-Tage-Schnitt, weil das Tagesgewicht durch Wasser und Essen um 1–2 kg schwankt.</div>';
-  const ago = tr.filter(x => x.date <= addDays(last.date, -28)), ref = ago.length ? ago[ago.length - 1] : tr[0], goal = S.p.bwGoal;
-  const d30 = Math.round((last.avg - ref.avg) * 10) / 10;
-  h += '<div class="card"><h2>Körpergewicht</h2><div class="stats" style="margin:0"><div><small>7-Tage-Schnitt</small><b>' + fkg(last.avg) + '</b></div><div><small>Letzte Messung</small><b>' + fkg(last.kg) + '</b><small>' + esc(dshort(last.date)) + '</small></div><div><small>Seit ' + esc(dshort(ref.date)) + '</small><b>' + (d30 > 0 ? '+' : '') + fmt(d30) + ' kg</b></div></div>';
+  let h = '';
+  if (!tr.length) return entry + '<div class="empty">Noch keine Messung. Die Kurve zeigt später den 7-Tage-Schnitt, weil das Tagesgewicht durch Wasser und Essen um 1–2 kg schwankt.</div>';
+  const per = S.ui.bper || '3M', from = perFrom(per), tp = tr.filter(x => x.date >= from), goal = S.p.bwGoal, hgt = S.p.height;
+  const ref = tp.length ? tp[0] : last, dP = Math.round((last.avg - ref.avg) * 10) / 10, bmi = kg => hgt ? kg / Math.pow(hgt / 100, 2) : null;
+  h += '<div class="card"><h2>Körpergewicht</h2><div class="stats" style="margin:0"><div><small>7-Tage-Schnitt</small><b>' + fkg(last.avg) + '</b></div><div><small>' + (hgt ? 'BMI' : 'Letzte Messung') + '</small><b>' + (hgt ? fmt(Math.round(bmi(last.avg) * 10) / 10) : fkg(last.kg)) + '</b><small>' + (hgt ? 'bei ' + hgt + ' cm' : esc(dshort(last.date))) + '</small></div><div><small>Im Zeitraum</small><b>' + (dP > 0 ? '+' : '') + fmt(dP) + ' kg</b></div></div>' + perChips('bper', per);
+  if (tp.length > 1) h += '<p class="readout" data-lro>' + esc(dshort(last.date) + ': Schnitt ' + fkg(last.avg) + ' · gewogen ' + fkg(last.kg)) + '</p>' +
+    lineChart(tp.map(x => ({t:parseD(x.date).getTime(), date:x.date, v:x.avg, top:'gewogen ' + fkg(x.kg)})), 'kg', 'Körpergewicht, 7-Tage-Schnitt') + '<p class="hint">Linie: 7-Tage-Schnitt. Tippe auf die Kurve für einzelne Tage.</p>';
+  else h += '<p class="hint">Für eine Kurve braucht es mindestens zwei Messungen im Zeitraum.</p>';
+  const pt = (f) => tp.filter(x => f(x) != null).map(x => ({t:parseD(x.date).getTime(), v:f(x)}));
+  h += statTable([{name:'Gewicht (kg)', pts:pt(x => x.kg), unit:'kg', good:goal ? (goal < last.avg ? 'down' : 'up') : null}, {name:'BMI', pts:hgt ? pt(x => bmi(x.kg)) : [], unit:'', dec:1, good:null},
+    {name:'Körperfett (%)', pts:pt(x => x.bf), unit:'%', good:'down'}, {name:'Taille (cm)', pts:pt(x => x.waist), unit:'cm', good:'down'}]);
   if (goal) h += '<p style="margin-top:10px">Ziel ' + fkg(goal) + ': noch ' + fmt(Math.abs(Math.round((last.avg - goal) * 10) / 10)) + ' kg ' + (last.avg > goal ? 'abnehmen' : last.avg < goal ? 'zunehmen' : '') + '.</p>';
-  if (tr.length > 1) h += '<p class="readout" data-lro style="margin-top:10px">' + esc(dshort(last.date) + ': Schnitt ' + fkg(last.avg) + ' · gewogen ' + fkg(last.kg)) + '</p>' +
-    lineChart(tr.map(x => ({t:parseD(x.date).getTime(), date:x.date, v:x.avg, top:'gewogen ' + fkg(x.kg)})), 'kg', 'Körpergewicht, 7-Tage-Schnitt') + '<p class="hint">Linie: 7-Tage-Schnitt. Tippe auf die Kurve für einzelne Tage.</p>';
-  h += '<div class="row" style="justify-content:flex-start;gap:14px;margin-top:6px"><button class="link" data-act="b-goal">' + (goal ? 'Zielgewicht ändern' : 'Zielgewicht setzen') + '</button></div></div>';
+  h += '<div class="row" style="justify-content:flex-start;gap:16px;margin-top:6px"><button class="link" data-act="b-goal">' + (goal ? 'Zielgewicht ändern' : 'Zielgewicht setzen') + '</button><button class="link" data-act="b-height">' + (hgt ? 'Größe ändern' : 'Größe für BMI eintragen') + '</button></div></div>';
+  h += entry;
   const withW = tr.filter(x => x.waist || x.bf);
   if (withW.length) { const lw = withW[withW.length - 1]; h += '<div class="card"><h2>Körperfett und Taille</h2><div class="stats" style="margin:0"><div><small>Körperfett</small><b>' + (lw.bf ? fmt(lw.bf) + ' %' : '–') + '</b></div><div><small>Taille</small><b>' + (lw.waist ? fmt(lw.waist) + ' cm' : '–') + '</b></div><div><small>Stand</small><b>' + esc(dshort(lw.date)) + '</b></div></div></div>'; }
-  h += '<div class="card"><h2>Messungen</h2>' + tr.slice().reverse().slice(0, 30).map(x => '<div class="exrow"><span>' + esc(dweek(x.date)) + (x.bf || x.waist ? '<br><small>' + [x.bf ? fmt(x.bf) + ' % KF' : '', x.waist ? fmt(x.waist) + ' cm Taille' : ''].filter(Boolean).join(' · ') + '</small>' : '') + '</span><span class="r">' + fkg(x.kg) + ' <button class="link" data-act="b-del" data-v="' + x.id + '">Löschen</button></span></div>').join('') + '</div>';
+  h += '<div class="card"><h2>Messungen</h2>' + tr.slice().reverse().slice(0, S.ui.ball ? 400 : 7).map(x => '<div class="exrow"><span>' + esc(dweek(x.date)) + (x.bf || x.waist ? '<br><small>' + [x.bf ? fmt(x.bf) + ' % KF' : '', x.waist ? fmt(x.waist) + ' cm Taille' : ''].filter(Boolean).join(' · ') + '</small>' : '') + '</span><span class="r">' + fkg(x.kg) + ' <button class="link" data-act="b-del" data-v="' + x.id + '">Löschen</button></span></div>').join('') + (tr.length > 7 && !S.ui.ball ? '<button class="link" data-act="b-all">Alle ' + tr.length + ' Messungen anzeigen</button>' : '') + '</div>';
   return h;
 }
 function bodySaveAct() {

@@ -14,7 +14,7 @@ function startWorkout(free, planId) {
   /* Nach Blockende ohne Auswertung: mit den Werten der letzten Woche, ohne den Blockzähler zu erhöhen */
   const w = free ? {planId:null, tplId:null, name:'Freies Training', pr:{week:0, label:'Frei', pct:0.75, reps:8, sets:3, deload:false}, items:[]} : buildWorkout(p, S.sessions, over ? total - 1 : p.block.n, planId);
   S.active = {id:uid('s'), start:Date.now(), date:todayStr(), planId:w.planId, tplId:w.tplId, name:w.name, n:free || over ? null : p.block.n, pr:w.pr, block:p.block.no, items:w.items.map(itemFromPlan)};
-  S.ui.woMin = false; saveActive(); render(); wake();
+  S.ui.woMin = false; S.ui.wf = null; S.ui.ws = null; saveActive(); render(); wake();
   if (free) openPicker({mode:'wadd'});
 }
 function finishWorkout() {
@@ -32,41 +32,7 @@ function finishWorkout() {
 }
 
 /* ----- Trainingsansicht ----- */
-function restFor(it) { const e = EX[it.exId]; if (it.plan.mode === 'pct') return it.plan.slot < 2 ? 150 : 120; if (e.m === 'Core' || it.plan.mode === 'time') return 60; return 90; }
-function itemHTML(it, i) {
-  const e = EX[it.exId], pl = it.plan, mode = pl.mode;
-  let tgt;
-  if (mode === 'pct') tgt = '<b>' + fkg(pl.kg) + '</b> · ' + pl.sets + ' × ' + pl.reps + ' Wdh. · ' + fmt(Math.round(pl.pct * 1000) / 10) + ' % von ' + fkg(pl.e1);
-  else if (mode === 'dp') tgt = (pl.kg ? '<b>' + fkg(pl.kg) + '</b> · ' : '') + pl.sets + ' × ' + pl.rng[0] + '–' + pl.rng[1] + ' Wdh.' + (pl.first ? ' · Wähle ein Gewicht mit ca. 2 Wdh. Reserve' : '');
-  else if (mode === 'bw') tgt = '<b>' + pl.sets + ' × ' + pl.rng[0] + '–' + pl.rng[1] + ' Wdh.</b>' + (pl.kg > 0 ? ' · +' + fkg(pl.kg) + ' Zusatzgewicht' : '');
-  else tgt = '<b>' + pl.sets + ' × ' + pl.reps + ' s</b> halten';
-  let n = 0;
-  const rows = it.sets.map((s, j) => {
-    const lab = s.warm ? 'A' : ++n;
-    const kgF = mode === 'time' && e.eq === 'KG' ? '<div class="fld"><span>–</span></div>' :
-      '<div class="fld"><input inputmode="decimal" data-in="kg" data-i="' + i + '" data-s="' + j + '" value="' + (s.kg == null ? '' : fmt(s.kg)) + '" placeholder="' + (mode === 'bw' ? '0' : 'kg') + '" aria-label="Gewicht Satz ' + lab + '"><span>' + (mode === 'bw' ? '+kg' : 'kg') + '</span></div>';
-    return '<div class="srow' + (s.done ? ' done' : '') + (s.warm ? ' warm' : '') + '"><span class="n">' + lab + '</span>' + kgF +
-      '<div class="fld"><input inputmode="numeric" data-in="reps" data-i="' + i + '" data-s="' + j + '" value="' + (s.reps == null ? '' : s.reps) + '" aria-label="Wiederholungen Satz ' + lab + '"><span>' + (mode === 'time' ? 's' : 'Wdh.') + '</span></div>' +
-      '<button class="chk" data-act="set-done" data-i="' + i + '" data-s="' + j + '" aria-label="Satz ' + lab + ' erledigt" aria-pressed="' + !!s.done + '">✓</button></div>';
-  }).join('');
-  const tools = [];
-  if (mode === 'pct' || (mode === 'dp' && pl.kg)) if (['LH','KH','MA','KB'].includes(e.eq) && !it.sets.some(s => s.warm)) tools.push('<button class="link" data-act="warm" data-i="' + i + '">Aufwärmsätze</button>');
-  if (e.eq === 'LH') tools.push('<button class="link" data-act="plates" data-i="' + i + '">Scheibenrechner</button>');
-  tools.push('<button class="link" data-act="w-swap" data-i="' + i + '">Tauschen</button>', '<button class="link" data-act="w-rm" data-i="' + i + '"' + (S.ui.rmI === i ? ' style="color:var(--heavy)">Wirklich entfernen?' : '>Entfernen') + '</button>');
-  return '<div class="ex' + (pl.slot === 99 ? ' fin' : '') + '"><div class="row"><h3>' + esc(e.name) + '</h3>' + (mode === 'pct' && pl.slot < 2 ? '<span class="tag">Hauptübung</span>' : pl.slot === 99 ? '<span class="tag">Griff-Finisher</span>' : '') + '</div>' +
-    '<p class="tgt">' + tgt + '</p>' + (it.lastTxt ? '<p class="last">Letztes Mal: ' + esc(it.lastTxt) + '</p>' : '') + (S.p.exNotes[it.exId] ? '<p class="last">Notiz: ' + esc(S.p.exNotes[it.exId]) + '</p>' : '') +
-    '<div class="tools">' + tools.join('') + '</div>' +
-    '<div class="sh"><span>Satz</span><span>' + (mode === 'time' && e.eq === 'KG' ? '' : mode === 'bw' ? 'Zusatz' : 'Gewicht') + '</span><span>' + (mode === 'time' ? 'Dauer' : 'Wdh.') + '</span><span></span></div>' + rows +
-    '<div class="row" style="justify-content:flex-start;gap:14px"><button class="link" data-act="set-add" data-i="' + i + '">+ Satz</button>' + (it.sets.length > 1 ? '<button class="link" data-act="set-rm" data-i="' + i + '">− Satz</button>' : '') + '</div>' +
-    '<div class="feel"><p>Wie lief es? Steuert das Gewicht beim nächsten Mal.</p><div class="chips">' + FEEL.map(f => '<button class="chip" data-act="feel" data-i="' + i + '" data-v="' + f[0] + '" aria-pressed="' + (it.feel === f[0]) + '">' + f[1] + '</button>').join('') + '</div></div></div>';
-}
-function vWorkout() {
-  const a = S.active, sub = a.n === null ? 'Ohne Plan' : phaseText(a.pr);
-  return '<div class="bar"><button class="ghost-ic" data-act="wo-min" aria-label="Training minimieren">‹</button><div class="ttl"><small>' + esc(sub) + '</small><b>' + esc(a.name) + '</b></div>' +
-    '<time data-clock="wo">' + fmtDur(Date.now() - a.start) + '</time><button class="btn sm" data-act="wo-end">Beenden</button></div>' +
-    '<div class="scroll" id="woscroll"><div class="wrap">' + a.items.map(itemHTML).join('') +
-    '<button class="btn ghost wide" data-act="w-add">+ Übung hinzufügen</button><div style="height:140px"></div></div></div>';
-}
+function restFor(it) { const e = EX[it.exId], ov = S.p.restOv && S.p.restOv[it.exId]; if (ov) return ov; if (it.plan.mode === 'pct') return it.plan.slot < 2 ? 150 : 120; if (e.m === 'Core' || it.plan.mode === 'time') return 60; return 90; }
 function renderWorkout() {
   const el = $('#screen'), show = S.active && !S.ui.woMin && S.p && S.p.done;
   if (!show) { el.hidden = true; el.innerHTML = ''; document.body.classList.remove('lock'); return; }
@@ -155,6 +121,7 @@ function sheetHTML() {
   if (sh.t === 'glist') return gListHTML(sh.type);
   if (sh.t === 'ggoal') { const T = GTESTS[sh.type], g = p.gripGoal[sh.type]; return '<h2>Ziel: ' + T.name + '</h2><p>Setz dir einen Wert bis zum Saisonstart. Die App zeigt den Fortschritt als Balken.</p><div class="fld"><input id="gg-v" inputmode="decimal" value="' + (g ? fmt(g) : '') + '" placeholder="Zielwert"><span>' + T.unit + '</span></div><button class="btn wide" style="margin-top:12px" data-act="g-goal-save" data-v="' + sh.type + '">Speichern</button>' + (g ? '<button class="btn ghost wide" style="margin-top:8px" data-act="g-goal-del" data-v="' + sh.type + '">Ziel entfernen</button>' : '') + close; }
   if (sh.t === 'bgoal') return '<h2>Zielgewicht</h2><div class="fld"><input id="bg-v" inputmode="decimal" value="' + (p.bwGoal ? fmt(p.bwGoal) : '') + '" placeholder="z. B. 80"><span>kg</span></div><p class="hint">Leer lassen und speichern entfernt das Ziel.</p><button class="btn wide" style="margin-top:12px" data-act="bgoal-save">Speichern</button>' + close;
+  if (sh.t === 'height') return '<h2>Körpergröße</h2><p class="hint">Für den BMI. Leer lassen entfernt die Angabe.</p><div class="fld"><input id="hg-v" inputmode="numeric" value="' + (p.height || '') + '" placeholder="z. B. 183"><span>cm</span></div><button class="btn wide" style="margin-top:12px" data-act="height-save">Speichern</button>' + close;
   if (sh.t === 'cx') return customHTML(sh.name || '');
   if (sh.t === 'prog') {
     const ap = activeProgram(p);
@@ -280,7 +247,7 @@ const ACT = {
   'wo-drop2'() { S.active = null; S.rest = null; S.ui.sheet = null; saveActive(); unwake(); render(); toast('Training verworfen.'); },
   'set-done'(v, t) {
     const it = S.active.items[+t.dataset.i], j = +t.dataset.s, s = it.sets[j], mode = it.plan.mode;
-    if (s.done) { s.done = false; saveActive(); renderWorkout(); return; }
+    if (s.done) { s.done = false; S.ui.ws = j; saveActive(); renderWorkout(); return; }
     if (!(s.reps > 0)) { toast('Trag erst die Wiederholungen ein.'); return; }
     if ((mode === 'pct' || mode === 'dp') && !(s.kg > 0)) { toast('Trag erst das Gewicht ein.'); return; }
     s.done = true;
@@ -292,6 +259,7 @@ const ACT = {
     }
     for (let k = j + 1; k < it.sets.length; k++) if (!it.sets[k].warm && it.sets[k].kg == null) it.sets[k].kg = s.kg;
     if (!s.warm) S.rest = {end:Date.now() + restFor(it) * 1000}; else S.rest = {end:Date.now() + 60000};
+    if (S.ui.wf != null) { const nx = it.sets.findIndex((q, k) => k > j && !q.done); S.ui.ws = nx >= 0 ? nx : j; if (nx < 0 && woProg(it).done === woProg(it).all) toast(EX[it.exId].name + ' geschafft. Wie lief es?'); }
     saveActive(); renderWorkout(); renderRest();
   },
   'set-add'(v, t) { const it = S.active.items[+t.dataset.i], l = it.sets.filter(s => !s.warm).pop() || it.sets[it.sets.length - 1]; it.sets.push({kg:l ? l.kg : null, reps:l ? l.reps : it.plan.reps, done:false}); saveActive(); renderWorkout(); },
@@ -300,8 +268,25 @@ const ACT = {
   warm(v, t) { const it = S.active.items[+t.dataset.i], w = it.sets.find(s => !s.warm), kg = (w && w.kg) || it.plan.kg; if (!kg) { toast('Trag erst das Arbeitsgewicht ein.'); return; } it.sets = warmups(kg, EX[it.exId]).concat(it.sets); saveActive(); renderWorkout(); },
   plates(v, t) { S.ui.sheet = {t:'plates', i:+t.dataset.i}; renderSheet(); },
   'w-swap'(v, t) { openPicker({mode:'wswap', i:+t.dataset.i, m:EX[S.active.items[+t.dataset.i].exId].m}); },
-  'w-rm'(v, t) { const i = +t.dataset.i; if (S.ui.rmI !== i) { S.ui.rmI = i; renderWorkout(); setTimeout(() => { if (S.ui.rmI === i) { S.ui.rmI = null; renderWorkout(); } }, 4000); return; } S.ui.rmI = null; S.active.items.splice(i, 1); saveActive(); renderWorkout(); },
+  'w-rm'(v, t) { const i = +t.dataset.i; if (S.ui.rmI === i) S.ui.wf = null; if (S.ui.rmI !== i) { S.ui.rmI = i; renderWorkout(); setTimeout(() => { if (S.ui.rmI === i) { S.ui.rmI = null; renderWorkout(); } }, 4000); return; } S.ui.rmI = null; S.active.items.splice(i, 1); saveActive(); renderWorkout(); },
   'w-add'() { openPicker({mode:'wadd'}); },
+  'wf-open'(v) { S.ui.wf = +v; S.ui.ws = null; renderWorkout(); const sc = $('#woscroll'); if (sc) sc.scrollTop = 0; },
+  'wf-close'() { S.ui.wf = null; renderWorkout(); },
+  'wf-go'(v) { if (v === 'list') { S.ui.wf = null; } else { S.ui.wf = +v; S.ui.ws = null; } renderWorkout(); const sc = $('#woscroll'); if (sc) sc.scrollTop = 0; },
+  'ws-sel'(v) { S.ui.ws = +v; renderWorkout(); },
+  st(v, t) {
+    const it = S.active.items[+t.dataset.i], s = it.sets[+t.dataset.s], f = t.dataset.f, d = +t.dataset.d, e = EX[it.exId];
+    if (f === 'kg') { const step = e.inc || 2.5, base = s.kg != null ? s.kg : (it.plan.kg || 0); s.kg = Math.max(0, Math.round((base + d * step) * 100) / 100); }
+    else { const step = it.plan.mode === 'time' ? 5 : 1, base = s.reps != null ? s.reps : (it.plan.reps || 0); s.reps = Math.max(0, base + d * step); }
+    saveActive(); renderWorkout();
+  },
+  'rest-adj'(v, t) { const it = S.active.items[+t.dataset.i]; S.p.restOv = S.p.restOv || {}; S.p.restOv[it.exId] = Math.max(15, Math.min(600, restFor(it) + (+v))); saveProfile(); renderWorkout(); },
+  sper(v) { S.ui.sper = v; render(); },
+  'b-all'() { S.ui.ball = true; render(); },
+  bper(v) { S.ui.bper = v; render(); },
+  cal(v) { S.ui.calM = v; render(); },
+  'b-height'() { S.ui.sheet = {t:'height'}; renderSheet(); },
+  'height-save'() { const x = parseNum($('#hg-v').value); S.p.height = x > 120 && x < 230 ? Math.round(x) : null; saveProfile(); S.ui.sheet = null; render(); },
   'p-swap'(v) { const tid = v.split(':')[0], i = +v.split(':')[1]; openPicker({mode:'pswap', key:v, m:EX[templateIds(S.p, tid)[i]].m}); },
   pick(v) {
     const sh = S.ui.sheet, a = S.active;

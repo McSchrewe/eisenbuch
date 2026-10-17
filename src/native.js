@@ -88,7 +88,7 @@ function reschedSoon() { clearTimeout(reschedT); reschedT = setTimeout(() => Nat
 /* Android-Zurück-Taste: erst Dialog schließen, dann Training minimieren, dann zu „Heute“ */
 function onBack() {
   if (S.ui.sheet) { if (S.ui.sheet.t === 'gtest' && S.gt && (S.gt.st === 'run' || S.gt.st === 'cd')) return; ACT.close(); return; }
-  if (S.active && !S.ui.woMin) { S.ui.woMin = true; render(); return; }
+  if (S.active && !S.ui.woMin) { if (S.ui.wf != null) { ACT['wf-close'](); return; } S.ui.woMin = true; render(); return; }
   if (S.ui.pv) { ACT['pl-back'](); return; }
   if (S.ui.more) { ACT['more-back'](); return; }
   if (S.tab !== 'train') { ACT.tab('train'); return; }

@@ -146,11 +146,7 @@ function vStats() {
   if (seg === 'ex') return h + vEx();
   const mon = mondayOf(todayStr()), wv = weeklyVolume(S.sessions, 10), v4 = wv.slice(-4).reduce((a, b) => a + b.v, 0);
   h += '<div class="stats tiles"><div><small>Einheiten</small><b>' + S.sessions.length + '</b></div><div><small>Diese Woche</small><b>' + weekCount(mon) + '</b><small>+ ' + weekRuns(mon) + ' Lauf</small></div><div><small>Serie</small><b>' + weekStreak() + ' Wo.</b></div></div>';
-  h += '<div class="card"><h2>Maximalkraft (geschätztes 1RM)</h2><p class="hint">Veränderung seit Beginn von Block ' + p.block.no + '. Tippe für Verlauf und Rekorde.</p>' + MAIN_LIFTS.map(id => {
-    const v = p.e1[id], s0 = p.block.e1Start[id];
-    return '<button class="lift" data-act="ex-open" data-v="' + id + '">' + avatar(EX[id]) + '<span>' + esc(EX[id].name) + '</span><span><b class="num">' + (v ? fkg(v) : '–') + '</b> ' + (v && s0 && v !== s0 ? deltaHTML(pctDelta(v, s0)) : '') + '</span></button>';
-  }).join('') + '</div>';
-  h += muscleCard();
+  h += liftCard(S.ui.sper || '3M') + workoutCard() + muscleCard();
   h += '<div class="card"><h2>Volumen pro Woche</h2><p class="readout" data-ro>Diese Woche: ' + volT(wv[wv.length - 1].v) + '</p>' + barChart(wv, 't', 'Trainingsvolumen pro Woche', volT) +
     '<p class="hint" style="margin-top:6px">Gewicht × Wiederholungen aller Arbeitssätze. Letzte 4 Wochen: ' + volT(v4) + '.</p></div>';
   return h;
@@ -187,6 +183,7 @@ function runBtn(r) {
 function vHist() {
   const items = S.sessions.map(s => ({d:s.date, t:s.start || 0, h:sessBtn(s)})).concat(S.runs.map(r => ({d:r.date, t:r.t || 0, h:runBtn(r)}))).sort((a, b) => b.d < a.d ? -1 : b.d > a.d ? 1 : b.t - a.t);
   let h = head('Verlauf', S.sessions.length + ' Krafteinheiten · ' + S.runs.length + ' Läufe');
+  h += calendarCard();
   if (!items.length) return h + '<div class="empty">Noch nichts gespeichert. Starte ein Training unter „Training“.</div>';
   let cur = '';
   items.slice(0, 150).forEach(x => {
