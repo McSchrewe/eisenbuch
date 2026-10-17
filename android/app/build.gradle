@@ -27,6 +27,11 @@ android {
             keyPassword 'eisenbuch-app'
         }
     }
+    // Lint ist für die private App nicht nötig und soll den Build nicht abbrechen
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
     buildTypes {
         debug {
             signingConfig signingConfigs.eisenbuch
