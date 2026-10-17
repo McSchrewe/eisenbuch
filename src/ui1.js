@@ -121,7 +121,7 @@ function lineChart(pts, unit, label) {
   let g = '';
   [0, 0.5, 1].forEach(f => {
     const v = y0 + (y1 - y0) * f, y = Y(v);
-    g += '<line class="gl" x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '"/><text class="tx" x="' + (L - 6) + '" y="' + (y + 3) + '" text-anchor="end">' + fmt(Math.round(v * 2) / 2) + '</text>';
+    g += '<line class="gl" x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '"/><text class="tx" x="' + (L - 6) + '" y="' + (y + 3) + '" text-anchor="end">' + fmt(y1 - y0 < 4 ? Math.round(v * 10) / 10 : Math.round(v * 2) / 2) + '</text>';
   });
   const xy = pts.map(p => [X(p.t), Y(p.v)]);
   const line = xy.map((a, i) => (i ? 'L' : 'M') + a[0].toFixed(1) + ' ' + a[1].toFixed(1)).join(' ');
