@@ -38,15 +38,36 @@ jobs:
           fi
       - name: APK benennen
         run: cp android/app/build/outputs/apk/release/app-release.apk eisenbuch-1.${{ github.run_number }}.apk
+      - name: KVM für den Emulator freischalten
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Starttest im Android-Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: bash tools/emulator-smoke.sh eisenbuch-1.${{ github.run_number }}.apk
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: eisenbuch-apk
-          path: eisenbuch-1.${{ github.run_number }}.apk
+          path: |
+            eisenbuch-1.${{ github.run_number }}.apk
+            emulator-start.png
+            logcat.txt
+          if-no-files-found: ignore
       - name: Release veröffentlichen
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.${{ github.run_number }}
           name: Eisenbuch 1.${{ github.run_number }}
           body: ${{ github.event.head_commit.message }}
-          files: eisenbuch-1.${{ github.run_number }}.apk
+          files: |
+            eisenbuch-1.${{ github.run_number }}.apk
+            emulator-start.png
           make_latest: true

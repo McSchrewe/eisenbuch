@@ -182,7 +182,7 @@ function bindOne(svg) {
 
 /* ----- Export / Import ----- */
 async function offerFile(name, text, title) {
-  if (NATIVE) { try { await Nat.share(name, text); } catch (e) { if (!/cancel/i.test(String(e && e.message))) toast('Teilen nicht möglich: ' + ((e && e.message) || 'Fehler')); } return; }
+  if (NATIVE && Nat.P) { try { await Nat.share(name, text); } catch (e) { if (!/cancel/i.test(String(e && e.message))) toast('Teilen nicht möglich: ' + ((e && e.message) || 'Fehler')); } return; }
   try {
     const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
     if (dl) { await dl.save({filename:name, data:text}); toast('Datei gespeichert.'); return; }
@@ -411,6 +411,7 @@ function render() {
   $('#view').innerHTML = ob ? vOnboard() : ({today:vToday, plan:vPlan, grip:vGrip, run:vRun, hist:vHist}[S.tab] || vToday)();
   $('#tabs').innerHTML = TABS.map(t => '<button data-act="tab" data-v="' + t[0] + '"' + (S.tab === t[0] ? ' aria-current="page"' : '') + '><svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS[t[0]] + '</svg><span>' + t[1] + '</span></button>').join('');
   renderWorkout(); renderSheet(); renderRest(); bindChart();
+  if (!render.ok) { render.ok = true; console.log('EB_READY'); }
 }
 setInterval(() => {
   if (S.active) document.querySelectorAll('[data-clock=wo]').forEach(e => { e.textContent = fmtDur(Date.now() - S.active.start); });

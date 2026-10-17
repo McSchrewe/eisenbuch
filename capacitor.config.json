@@ -2,8 +2,14 @@
   "appId": "de.eisenbuch.app",
   "appName": "Eisenbuch",
   "webDir": "www",
-  "android": { "allowMixedContent": false },
+  "android": {
+    "allowMixedContent": false
+  },
   "plugins": {
-    "LocalNotifications": { "smallIcon": "ic_stat_eisenbuch", "iconColor": "#1F55C4" }
-  }
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_eisenbuch",
+      "iconColor": "#1F55C4"
+    }
+  },
+  "loggingBehavior": "production"
 }

@@ -5,7 +5,13 @@ const Nat = {
   P:null, saveT:null,
   init() {
     if (!NATIVE) return;
-    const R = n => window.Capacitor.registerPlugin(n);
+    try { this._init(); } catch (e) { console.error('EB_NATIVE_INIT ' + (e && e.message)); this.P = null; }
+  },
+  _init() {
+    /* registerPlugin stammt aus @capacitor/core (capacitor.js), nicht aus der Android-Brücke */
+    const reg = (window.capacitorExports && window.capacitorExports.registerPlugin) || (window.Capacitor && window.Capacitor.registerPlugin);
+    if (!reg) throw new Error('registerPlugin fehlt');
+    const R = n => reg(n);
     this.P = {LN:R('LocalNotifications'), FS:R('Filesystem'), SH:R('Share'), HA:R('Haptics'), APP:R('App')};
     const LN = this.P.LN;
     LN.createChannel({id:'rest', name:'Pausen-Timer', description:'Signal am Ende der Satzpause', importance:5, visibility:1, vibration:true}).catch(() => {});
@@ -18,7 +24,7 @@ const Nat = {
     this.P.APP.addListener('appStateChange', st => { if (st.isActive) this.fg(); else this.bg(); });
   },
   async perm() {
-    if (!NATIVE) return false;
+    if (!NATIVE || !this.P) return false;
     try { let s = await this.P.LN.checkPermissions(); if (s.display !== 'granted') s = await this.P.LN.requestPermissions(); return s.display === 'granted'; } catch (e) { return false; }
   },
   /* App geht in den Hintergrund oder Bildschirm wird gesperrt: Pausen-Ende als Benachrichtigung planen */
@@ -34,21 +40,22 @@ const Nat = {
     if (S.rest && Date.now() >= S.rest.end) S.rest = null; /* Signal kam schon als Benachrichtigung */
     renderRest(); this.reschedule();
   },
-  vib(ms) { if (NATIVE) this.P.HA.vibrate({duration:ms || 200}).catch(() => {}); },
+  vib(ms) { if (NATIVE && this.P) this.P.HA.vibrate({duration:ms || 200}).catch(() => {}); },
   async share(name, text) {
+    if (!this.P) throw new Error('Teilen nicht verfügbar');
     const r = await this.P.FS.writeFile({path:name, data:text, directory:'CACHE', encoding:'utf8'});
     await this.P.SH.share({title:name, url:r.uri, dialogTitle:'Datei speichern oder teilen'});
   },
   /* Zusätzliche Sicherung als Datei im App-Speicher (wird von Androids Auto-Backup mitgesichert) */
-  autosave(json) { if (!NATIVE) return; clearTimeout(this.saveT); this._json = json; this.saveT = setTimeout(() => this.flush(), 1500); },
-  flush() { if (!NATIVE || !this._json) return; const j = this._json; this._json = null; this.P.FS.writeFile({path:'eisenbuch-autosave.json', data:j, directory:'DATA', encoding:'utf8'}).catch(() => {}); },
+  autosave(json) { if (!NATIVE || !this.P) return; clearTimeout(this.saveT); this._json = json; this.saveT = setTimeout(() => this.flush(), 1500); },
+  flush() { if (!NATIVE || !this.P || !this._json) return; const j = this._json; this._json = null; this.P.FS.writeFile({path:'eisenbuch-autosave.json', data:j, directory:'DATA', encoding:'utf8'}).catch(() => {}); },
   async loadBackup() {
-    if (!NATIVE) return null;
+    if (!NATIVE || !this.P) return null;
     try { const r = await this.P.FS.readFile({path:'eisenbuch-autosave.json', directory:'DATA', encoding:'utf8'}); return JSON.parse(r.data); } catch (e) { return null; }
   },
   /* Erinnerungen für die nächsten 4 Wochen mit dem jeweils geplanten Training neu planen */
   async reschedule() {
-    if (!NATIVE || !S.p || !S.p.done) return;
+    if (!NATIVE || !this.P || !S.p || !S.p.done) return;
     const LN = this.P.LN;
     try {
       const pend = await LN.getPending();
@@ -84,5 +91,5 @@ function onBack() {
   if (S.ui.sheet) { if (S.ui.sheet.t === 'gtest' && S.gt && (S.gt.st === 'run' || S.gt.st === 'cd')) return; ACT.close(); return; }
   if (S.active && !S.ui.woMin) { S.ui.woMin = true; render(); return; }
   if (S.tab !== 'today') { ACT.tab('today'); return; }
-  Nat.P.APP.minimizeApp().catch(() => {});
+  if (Nat.P) Nat.P.APP.minimizeApp().catch(() => {});
 }
