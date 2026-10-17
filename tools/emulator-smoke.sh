@@ -12,6 +12,9 @@ for i in $(seq 1 30); do
   if grep -q "EB_READY" logcat.txt; then break; fi
 done
 adb exec-out screencap -p > emulator-start.png || true
+# Fensterdaten zur Diagnose (Statusleiste, Insets) als Hinweis ausgeben
+info=$(adb shell dumpsys window windows 2>/dev/null | grep -A12 "de.eisenbuch.app/de.eisenbuch.app.MainActivity" | grep -E "mFrame|mAttrs|fl=|sysuil|insets|ty=" | head -12 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+echo "::notice title=Fensterdaten::$info"
 if grep -q "EB_READY" logcat.txt && ! grep -q "EB_START_ERROR\|EB_NATIVE_INIT" logcat.txt; then
   echo "App startet im Emulator korrekt."
   exit 0
