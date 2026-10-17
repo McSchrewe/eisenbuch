@@ -1,5 +1,8 @@
 apply plugin: 'com.android.application'
 
+// Versionsnummer kommt aus dem GitHub-Build, damit jede neue APK ein Update ist
+def ebRun = (System.getenv('GITHUB_RUN_NUMBER') ?: '1') as Integer
+
 android {
     namespace "de.eisenbuch.app"
     compileSdk rootProject.ext.compileSdkVersion
@@ -7,9 +10,8 @@ android {
         applicationId "de.eisenbuch.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        // Versionsnummer kommt aus dem GitHub-Build, damit jede neue APK ein Update ist
-        versionCode (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
-        versionName "1." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
+        versionCode ebRun
+        versionName "1." + ebRun
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
