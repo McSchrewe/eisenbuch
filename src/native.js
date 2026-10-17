@@ -18,7 +18,7 @@ const Nat = {
     LN.createChannel({id:'remind', name:'Trainings-Erinnerungen', description:'Erinnerung an geplante Einheiten und Griff-Tests', importance:4, visibility:1, vibration:true}).catch(() => {});
     LN.addListener('localNotificationActionPerformed', a => {
       const go = a && a.notification && a.notification.extra && a.notification.extra.go;
-      if (go && S.p && S.p.done) { S.tab = go; if (go === 'body') S.ui.bseg = 'grip'; if (S.active) S.ui.woMin = false; render(); }
+      if (go && S.p && S.p.done) { S.tab = go; if (go === 'wake') S.ui.wseg = 'grip'; if (S.active) S.ui.woMin = false; render(); }
     });
     this.P.APP.addListener('backButton', () => onBack());
     this.P.APP.addListener('appStateChange', st => { if (st.isActive) this.fg(); else this.bg(); });
@@ -78,7 +78,7 @@ const Nat = {
     const gd = gripDue();
     if (!gd.first) {
       const day = gd.due ? addDays(todayStr(), 1) : addDays(gd.last, S.p.gripEvery), at = parseD(day); at.setHours(9, 0, 0, 0);
-      list.push({id:1100, title:'Griff-Test fällig', body:'Dead Hang, Handtuch-Hang & Co.: ausgeruht testen, ca. 15 min.', channelId:'remind', schedule:{at, allowWhileIdle:true}, extra:{go:'body'}});
+      list.push({id:1100, title:'Griff-Test fällig', body:'Dead Hang, Handtuch-Hang & Co.: ausgeruht testen, ca. 15 min.', channelId:'remind', schedule:{at, allowWhileIdle:true}, extra:{go:'wake'}});
     }
     if (list.length) LN.schedule({notifications:list}).catch(() => {});
   }

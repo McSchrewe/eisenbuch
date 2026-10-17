@@ -7,6 +7,7 @@ const ICONS = {
   hist:'<path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3 4v4h4"/><path d="M12 7.5V12l3 2"/>',
   body:'<circle cx="12" cy="7.5" r="3.5"/><path d="M5 20c.8-4 3.6-6 7-6s6.2 2 7 6"/>',
   more:'<path d="M4 7h16M4 12h16M4 17h16"/>',
+  wake:'<path d="M3 17c3 0 3-2 6-2s3 2 6 2 3-2 6-2"/><path d="M5 13l10-7 4 2-9 6"/><circle cx="17" cy="4" r="1.6"/>',
   play:'<path d="M8 5.5v13l11-6.5z"/>', back:'<path d="M19 12H5M11 6l-6 6 6 6"/>', edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
   check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>', plus:'<path d="M12 5v14M5 12h14"/>', swap:'<path d="M7 4L4 7l3 3"/><path d="M4 7h12a4 4 0 0 1 4 4"/><path d="M17 20l3-3-3-3"/><path d="M20 17H8a4 4 0 0 1-4-4"/>',
   up:'<path d="M12 19V5M6 11l6-6 6 6"/>', down:'<path d="M12 5v14M6 13l6 6 6-6"/>', x:'<path d="M6 6l12 12M18 6L6 18"/>', chev:'<path d="M9 6l6 6-6 6"/>',
@@ -16,12 +17,12 @@ const ICONS = {
   data:'<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/>',
   wave:'<path d="M3 15c3 0 3-3 6-3s3 3 6 3 3-3 6-3"/><path d="M3 19c3 0 3-3 6-3s3 3 6 3 3-3 6-3"/>'
 };
-const TABS = [['train','Training'],['stats','Statistik'],['hist','Verlauf'],['body','Körper'],['more','Mehr']];
+const TABS = [['train','Training'],['hist','Verlauf'],['stats','Statistik'],['body','Körper'],['wake','Wake']];
 const FEEL = [['easy','Leicht'],['ok','Passend'],['hard','Schwer']];
 const RUNTYPES = ['Locker','Tempo','Intervalle','Langer Lauf','Wettkampf'];
 const MUSCLE_TAG = {Brust:['Br','#E5675B'], 'Rücken':['Rü','#5B9BE5'], Schultern:['Sc','#F2C744'], Bizeps:['Bi','#8B7CF6'], Trizeps:['Tr','#EC6FA8'], Quadrizeps:['Qu','#6DB37A'],
   Beinbeuger:['Bb','#14B8A6'], 'Gesäß':['Gs','#F59E0B'], Waden:['Wa','#7FB8C9'], Core:['Co','#E58F5B'], Unterarme:['Ua','#B5A27A'], 'Ganzkörper':['GK','#9AA59F']};
-function avatar(e) { const t = MUSCLE_TAG[e.m] || ['?', '#9AA59F']; return '<span class="av" style="--c:' + t[1] + '">' + t[0] + '</span>'; }
+function avatar(e) { const t = MUSCLE_TAG[e.m] || ['?', '#9AA59F'], im = exImg(e.id, 0); return '<span class="av' + (im ? ' img' : '') + '" style="--c:' + t[1] + '">' + (im ? '<img src="' + im + '" alt="" loading="lazy" onerror="this.parentNode.classList.remove(\'img\');this.remove()">' : '') + '<i>' + t[0] + '</i></span>'; }
 
 function planLine(it) {
   if (it.mode === 'time') return it.sets + ' Sätze · ' + it.reps + ' s' + (it.kg > 0 ? ' · ' + fkg(it.kg) : '');
@@ -99,7 +100,7 @@ function heroCard(w, label) {
 }
 function vTrain() {
   const p = S.p, pg = activeProgram(p), M = MODELS[p.model], total = blockSessions(p), n = p.block.n;
-  let h = head('Training', esc(dlong(todayStr()))) + '<button class="pill" data-act="prog-open"><small>Programm</small><span>' + esc(pg.name) + '</span>' + I(ICONS.chev, 'i s') + '</button>';
+  let h = head('Training', esc(dlong(todayStr())), '<button class="ic" data-act="tab" data-v="more" aria-label="Mehr und Einstellungen">' + I(ICONS.gear) + '</button>') + '<button class="pill" data-act="prog-open"><small>Programm</small><span>' + esc(pg.name) + '</span>' + I(ICONS.chev, 'i s') + '</button>';
   if (S.active) h += '<button class="banner" data-act="wo-open"><span><b>Training läuft</b><small>' + esc(S.active.name) + ' · <span class="num" data-clock="wo">' + fmtDur(Date.now() - S.active.start) + '</span></small></span><span class="btn sm">Fortsetzen</span></button>';
   if (n >= total) {
     h += '<div class="card"><p class="eyebrow">Block ' + p.block.no + ' · ' + M.name + '</p><h3>Block geschafft</h3>' + blockSegs() +
@@ -130,8 +131,9 @@ function vPlanDetail(id) {
   } else h += '<p class="daysline">' + I(ICONS.cal, 'i s') + (pl.days.length ? pl.days.map(d => DAYS[d]).join(', ') : 'Kein fester Wochentag') + ' · ' + esc(activeProgram(p).name) + '</p>';
   h += '<div class="list exlist">' + (pl.items.length ? pl.items.map((it, i) => {
     const e = EX[it.exId], x = exPlan(p, it.exId, i, w.pr, S.sessions), ls = lastSession(S.sessions, it.exId);
-    return '<div class="exitem">' + avatar(e) + '<button class="exm" data-act="ex-open" data-v="' + e.id + '"><b>' + esc(e.name) + '</b><small>' + esc(planLine(x)) + '</small></button>' +
-      (ed ? '<span class="exctl"><button class="ic s" data-act="pl-up" data-v="' + i + '" aria-label="Nach oben"' + (i ? '' : ' disabled') + '>' + I(ICONS.up) + '</button><button class="ic s" data-act="pl-down" data-v="' + i + '" aria-label="Nach unten"' + (i < pl.items.length - 1 ? '' : ' disabled') + '>' + I(ICONS.down) + '</button><button class="ic s" data-act="pl-swap" data-v="' + i + '" aria-label="Tauschen">' + I(ICONS.swap) + '</button><button class="ic s warn" data-act="pl-rm" data-v="' + i + '" aria-label="Entfernen">' + I(ICONS.x) + '</button></span>'
+    const ssIn = i > 0 && pl.items[i - 1].ss;
+    return '<div class="exitem' + (it.ss ? ' ssA' : '') + (ssIn ? ' ssB' : '') + '">' + avatar(e) + '<button class="exm" data-act="ex-open" data-v="' + e.id + '"><b>' + esc(e.name) + '</b><small>' + (it.ss ? 'Supersatz mit nächster · ' : '') + esc(planLine(x)) + '</small></button>' +
+      (ed ? '<span class="exctl">' + (i < pl.items.length - 1 ? '<button class="ic s' + (it.ss ? ' on' : '') + '" data-act="pl-ss" data-v="' + i + '" aria-label="Supersatz mit nächster Übung">' + I('<path d="M9 7H6a4 4 0 0 0 0 8h3"/><path d="M15 7h3a4 4 0 0 1 0 8h-3"/><path d="M8 11h8"/>') + '</button>' : '') + '<button class="ic s" data-act="pl-up" data-v="' + i + '" aria-label="Nach oben"' + (i ? '' : ' disabled') + '>' + I(ICONS.up) + '</button><button class="ic s" data-act="pl-down" data-v="' + i + '" aria-label="Nach unten"' + (i < pl.items.length - 1 ? '' : ' disabled') + '>' + I(ICONS.down) + '</button><button class="ic s" data-act="pl-swap" data-v="' + i + '" aria-label="Tauschen">' + I(ICONS.swap) + '</button><button class="ic s warn" data-act="pl-rm" data-v="' + i + '" aria-label="Entfernen">' + I(ICONS.x) + '</button></span>'
         : '<span class="exr"><small>' + (ls ? agoText(ls.s.date) : 'neu') + '</small><button class="ic s" data-act="pl-swap" data-v="' + i + '" aria-label="Übung tauschen">' + I(ICONS.swap) + '</button></span>') + '</div>';
   }).join('') : '<div class="empty">Noch keine Übungen. Tippe auf +.</div>') + '</div>';
   if (ed) h += '<div class="row" style="margin-top:16px"><span class="sub">Plan löschen</span>' + (S.ui.pdel ? '<button class="btn sm danger" data-act="pl-del2">Wirklich löschen</button>' : '<button class="btn sm ghost" data-act="pl-del1">Löschen</button>') + '</div>';
@@ -181,9 +183,9 @@ function runBtn(r) {
   return '<button class="prow" data-act="run-open" data-v="' + r.id + '"><span class="dayc date" style="--c:#7FB8C9"><b>' + parseD(r.date).getDate() + '</b><small>' + DAYS[wdOf(r.date)] + '</small></span><span class="pt"><b>' + esc(r.type) + ' · ' + fmt(r.km) + ' km</b><small>' + fmtDur(r.sec * 1000) + ' · ' + fmtPace(r.sec / r.km) + '</small></span>' + I(ICONS.run, 'i s ago') + '</button>';
 }
 function vHist() {
-  const items = S.sessions.map(s => ({d:s.date, t:s.start || 0, h:sessBtn(s)})).concat(S.runs.map(r => ({d:r.date, t:r.t || 0, h:runBtn(r)}))).sort((a, b) => b.d < a.d ? -1 : b.d > a.d ? 1 : b.t - a.t);
+  const items = S.sessions.map(s => ({d:s.date, t:s.start || 0, h:sessBtn(s)})).concat(S.runs.map(r => ({d:r.date, t:r.t || 0, h:runBtn(r)}))).concat(S.wake.map(w => ({d:w.date, t:0, h:wakeBtn(w)}))).sort((a, b) => b.d < a.d ? -1 : b.d > a.d ? 1 : b.t - a.t);
   let h = head('Verlauf', S.sessions.length + ' Krafteinheiten · ' + S.runs.length + ' Läufe');
-  h += calendarCard();
+  h += calendarCard() + reviewCard(S.ui.calM || todayStr().slice(0, 7));
   if (!items.length) return h + '<div class="empty">Noch nichts gespeichert. Starte ein Training unter „Training“.</div>';
   let cur = '';
   items.slice(0, 150).forEach(x => {
@@ -197,7 +199,7 @@ function vHist() {
 /* ----- Körper ----- */
 function vBodyTab() {
   const seg = S.ui.bseg || '';
-  return head('Körper', seg === 'grip' ? 'Wakeboard-Vorbereitung' : 'Gewicht und Maße') + segc('bseg', seg, [['', 'Gewicht'], ['grip', 'Griffkraft']]) + (seg === 'grip' ? vGrip() : vBody());
+  return head('Körper', 'Gewicht, Maße und Fotos') + segc('bseg', seg, [['', 'Gewicht'], ['ph', 'Fotos']]) + (seg === 'ph' ? vPhotos() : vBody());
 }
 
 /* ----- Mehr ----- */
@@ -208,7 +210,7 @@ function vMore() {
   if (m === 'run') return subhead('Laufen', 'more-back') + vRun();
   if (m === 'set') return subhead('Einstellungen', 'more-back') + vSettings();
   if (m === 'data') return subhead('Daten und Sicherung', 'more-back') + vData();
-  return head('Mehr') + '<div class="list">' +
+  return subhead('Mehr', 'more-close') + '<div class="list">' +
     moreRow('peri', ICONS.wave, 'Periodisierung und 1RM', MODELS[p.model].name + ' · Block ' + p.block.no + ', Einheit ' + Math.min(p.block.n + 1, blockSessions(p)) + '/' + blockSessions(p)) +
     moreRow('run', ICONS.run, 'Laufen', S.runs.length + ' Läufe · Stoppuhr und Wochenkilometer') +
     moreRow('set', ICONS.gear, 'Einstellungen', 'Trainingszeit' + (NATIVE ? ', Erinnerungen' : '') + ', Wakeboard-Fokus') +
@@ -248,7 +250,9 @@ function vSettings() {
 function vData() {
   return '<div class="card"><p class="sub" id="cloudstate">' + cloudText() + '</p><div class="stack" style="margin-top:12px">' +
     '<button class="btn ghost" data-act="exp-json">Sicherung exportieren (JSON)</button><button class="btn ghost" data-act="exp-csv">Alle Sätze als CSV</button>' +
-    '<label class="btn ghost" for="imp">Sicherung laden</label><input type="file" id="imp" accept=".json,application/json" hidden></div></div>' +
+    '<label class="btn ghost" for="imp">Sicherung laden</label><input type="file" id="imp" accept=".json,application/json" hidden>' +
+    '<label class="btn ghost" for="csv-in">Training aus anderer App importieren (CSV)</label><input type="file" id="csv-in" accept=".csv,text/csv,text/plain" hidden></div>' +
+    '<p class="hint" style="margin-top:8px">CSV-Import: Exporte aus Strong, Hevy, FitNotes und ähnlichen Apps mit Spalten für Datum, Übung, Gewicht und Wiederholungen. Übungsnamen werden automatisch zugeordnet.</p></div>' +
     '<div class="row"><span class="sub">Alles löschen und neu einrichten</span>' + (S.ui.wipe ? '<button class="btn sm danger" data-act="wipe2">Wirklich löschen</button>' : '<button class="btn sm ghost" data-act="wipe1">Zurücksetzen</button>') + '</div>';
 }
 

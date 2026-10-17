@@ -3,7 +3,7 @@
 function uid(pre) { return pre + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function itemFromPlan(pl) {
   const sets = []; for (let i = 0; i < pl.sets; i++) sets.push({kg:pl.kg == null ? null : pl.kg, reps:pl.reps, done:false});
-  return {exId:pl.exId, plan:{mode:pl.mode, sets:pl.sets, reps:pl.reps, pct:pl.pct, kg:pl.kg, rng:pl.rng, desc:pl.desc, e1:pl.e1, first:pl.first, slot:pl.slot}, lastTxt:pl.lastTxt, feel:'ok', sets};
+  return {exId:pl.exId, ss:!!pl.ss, plan:{mode:pl.mode, sets:pl.sets, reps:pl.reps, pct:pl.pct, kg:pl.kg, rng:pl.rng, desc:pl.desc, e1:pl.e1, first:pl.first, slot:pl.slot}, lastTxt:pl.lastTxt, feel:'ok', sets};
 }
 let wakeLock = null;
 function wake() { try { if (navigator.wakeLock && !wakeLock) navigator.wakeLock.request('screen').then(l => { wakeLock = l; l.addEventListener('release', () => { wakeLock = null; }); }).catch(() => {}); } catch (e) {} }
@@ -61,7 +61,7 @@ function sheetHTML() {
   }
   if (sh.t === 'ex') {
     const e = EX[sh.id], hs = history(S.sessions, sh.id);
-    let h = '<p class="eyebrow">' + esc(e.m) + ' · ' + esc(EQUIP[e.eq]) + (e.c ? ' · Grundübung' : '') + '</p><h2>' + esc(e.name) + '</h2>';
+    let h = '<p class="eyebrow">' + esc(e.m) + ' · ' + esc(EQUIP[e.eq]) + (e.c ? ' · Grundübung' : '') + '</p><h2>' + esc(e.name) + '</h2>' + exPics(sh.id) + exHowTo(sh.id);
     if (e.c && e.eq !== 'KG' && !e.t) { const v = e1Of(p, sh.id); h += '<div class="row card" style="margin-top:8px"><span>Geschätztes 1RM<br><b class="num" style="font:600 24px var(--fd)">' + (v ? fkg(v) : 'offen') + '</b>' + (v && !p.e1[sh.id] ? '<br><small>abgeleitet aus ' + esc(EX[e.base].name) + '</small>' : '') + '</span><button class="btn sm ghost" data-act="e1-edit" data-v="' + sh.id + '">Bearbeiten</button></div>'; }
     if (!hs.length) return h + '<div class="empty">Noch keine Einträge für diese Übung.</div>' + exExtras(sh.id) + close;
     const unit = hs[0].unit, best = Math.max(...hs.map(x => x.v)), last = hs[hs.length - 1];
@@ -121,6 +121,12 @@ function sheetHTML() {
   if (sh.t === 'glist') return gListHTML(sh.type);
   if (sh.t === 'ggoal') { const T = GTESTS[sh.type], g = p.gripGoal[sh.type]; return '<h2>Ziel: ' + T.name + '</h2><p>Setz dir einen Wert bis zum Saisonstart. Die App zeigt den Fortschritt als Balken.</p><div class="fld"><input id="gg-v" inputmode="decimal" value="' + (g ? fmt(g) : '') + '" placeholder="Zielwert"><span>' + T.unit + '</span></div><button class="btn wide" style="margin-top:12px" data-act="g-goal-save" data-v="' + sh.type + '">Speichern</button>' + (g ? '<button class="btn ghost wide" style="margin-top:8px" data-act="g-goal-del" data-v="' + sh.type + '">Ziel entfernen</button>' : '') + close; }
   if (sh.t === 'bgoal') return '<h2>Zielgewicht</h2><div class="fld"><input id="bg-v" inputmode="decimal" value="' + (p.bwGoal ? fmt(p.bwGoal) : '') + '" placeholder="z. B. 80"><span>kg</span></div><p class="hint">Leer lassen und speichern entfernt das Ziel.</p><button class="btn wide" style="margin-top:12px" data-act="bgoal-save">Speichern</button>' + close;
+  if (sh.t === 'tr') return trickSheet(sh.id) + close;
+  if (sh.t === 'trsug') return '<h2>Sitzt der Trick?</h2><p>In mindestens 3 Sessions gelandet:</p>' + sh.ids.map(id => '<div class="exrow"><span>' + esc(TR[id].name) + '</span><button class="btn sm" data-act="tr-set" data-v="' + id + ':3">Auf „Sitzt“</button></div>').join('') + close;
+  if (sh.t === 'trpick') return '<h2>Trick hinzufügen</h2><div class="list">' + TRICKS.filter(t => S.ui.wf2.sel[t.id] === undefined).map(t => '<button class="exitem" data-act="ws-add" data-v="' + t.id + '"><span class="av" style="--c:' + T_AREAS[t.a][1] + '">' + t.lvl + '</span><span class="exm"><b>' + esc(t.name) + '</b><small>' + T_AREAS[t.a][0] + ' · ' + T_STAT[tStat(t.id)][0] + '</small></span></button>').join('') + '</div>' + close;
+  if (sh.t === 'wk') { const w = S.wake.find(x => x.id === sh.id); if (!w) return close; return '<p class="eyebrow">' + esc(dlong(w.date)) + '</p><h2>' + esc(w.spot) + (w.min ? ' · ' + w.min + ' min' : '') + '</h2>' + (w.laps ? '<p class="sub">' + w.laps + ' Runden</p>' : '') + (w.note ? '<p>' + esc(w.note) + '</p>' : '') + (w.tricks || []).map(x => '<div class="exrow"><span>' + esc((TR[x.id] || {name:x.id}).name) + '</span><span class="r">' + (x.ok ? 'gelandet' : 'geübt') + '</span></div>').join('') + (sh.del ? '<button class="btn danger wide" style="margin-top:12px" data-act="wk-del2" data-v="' + w.id + '">Endgültig löschen</button>' : '<button class="btn ghost wide" style="margin-top:12px" data-act="wk-del1">Session löschen</button>') + close; }
+  if (sh.t === 'phcmp') return photoCmpHTML(sh.ids);
+  if (sh.t === 'csv') return csvPreviewHTML(sh.an);
   if (sh.t === 'height') return '<h2>Körpergröße</h2><p class="hint">Für den BMI. Leer lassen entfernt die Angabe.</p><div class="fld"><input id="hg-v" inputmode="numeric" value="' + (p.height || '') + '" placeholder="z. B. 183"><span>cm</span></div><button class="btn wide" style="margin-top:12px" data-act="height-save">Speichern</button>' + close;
   if (sh.t === 'cx') return customHTML(sh.name || '');
   if (sh.t === 'prog') {
@@ -165,7 +171,7 @@ async function offerFile(name, text, title) {
   } catch (e) { if (e && e.code === 'declined') return; }
   S.ui.sheet = {t:'text', title, text}; renderSheet();
 }
-function exportJSON() { offerFile('eisenbuch-' + todayStr() + '.json', JSON.stringify({app:'eisenbuch', v:2, p:S.p, sessions:S.sessions, runs:S.runs, grip:S.grip, body:S.body}, null, 1), 'Sicherung'); }
+function exportJSON() { offerFile('eisenbuch-' + todayStr() + '.json', JSON.stringify({app:'eisenbuch', v:2, p:S.p, sessions:S.sessions, runs:S.runs, grip:S.grip, body:S.body, wake:S.wake}, null, 1), 'Sicherung'); }
 function exportCSV() {
   const rows = ['Datum;Einheit;Übung;Satz;Gewicht (kg);Wiederholungen;Aufwärmen;Gefühl'];
   S.sessions.forEach(s => s.exercises.forEach(x => x.sets.forEach((q, i) => rows.push([s.date, s.name, (EX[x.exId] || {name:x.exId}).name, i + 1, fmt(q.kg || 0), q.reps, q.warm ? 'ja' : 'nein', x.feel].join(';')))));
@@ -180,7 +186,7 @@ function importFile(f) {
     try {
       const j = JSON.parse(rd.result);
       if (j.app !== 'eisenbuch' || !j.p) throw new Error('x');
-      S.p = normProfile(j.p); S.p.upd = Date.now(); S.sessions = j.sessions || []; S.runs = j.runs || []; S.grip = j.grip || []; S.body = j.body || [];
+      S.p = normProfile(j.p); S.p.upd = Date.now(); S.sessions = j.sessions || []; S.runs = j.runs || []; S.grip = j.grip || []; S.body = j.body || []; S.wake = j.wake || []; S.wake.forEach(w => Cloud.put('wake', w.id, w));
       lsSave(); S.grip.forEach(g => Cloud.put('grip', g.id, g)); S.body.forEach(b => Cloud.put('body', b.id, b)); Cloud.put('meta', 'profile', S.p); S.sessions.forEach(s => Cloud.put('sessions', s.id, s)); S.runs.forEach(r => Cloud.put('runs', r.id, r));
       toast('Sicherung geladen: ' + S.sessions.length + ' Einheiten, ' + S.runs.length + ' Läufe.'); render();
     } catch (e) { toast('Die Datei ist keine Eisenbuch-Sicherung (JSON).'); }
@@ -236,6 +242,7 @@ const ACT = {
   'prog-del2'() { remapBlock(p => { p.programs = p.programs.filter(x => x.id !== p.prog); p.prog = p.programs[0].id; }); S.ui.sheet = null; render(); },
   'more-go'(v) { S.tab = 'more'; S.ui.more = v; render(); window.scrollTo(0, 0); },
   'more-back'() { S.ui.more = null; render(); window.scrollTo(0, 0); },
+  'more-close'() { S.ui.more = null; S.tab = 'train'; render(); window.scrollTo(0, 0); },
   sseg(v) { S.ui.sseg = v; render(); },
   bseg(v) { S.ui.bseg = v; render(); },
   'wo-free'() { startWorkout(true); },
@@ -258,7 +265,14 @@ const ACT = {
       if (hs.length && hs[hs.length - 1].unit === 'kg' && now > Math.max(...hs.map(x => x.v)) + 0.4) { it.prShown = true; toast('Neuer Bestwert: ' + ex.name + ', 1RM ≈ ' + fkg(now)); beep(1320, 200); setTimeout(() => beep(1760, 260), 220); Nat.vib(120); }
     }
     for (let k = j + 1; k < it.sets.length; k++) if (!it.sets[k].warm && it.sets[k].kg == null) it.sets[k].kg = s.kg;
+    const ii = +t.dataset.i, pa = ssPartner(S.active, ii);
     if (!s.warm) S.rest = {end:Date.now() + restFor(it) * 1000}; else S.rest = {end:Date.now() + 60000};
+    /* Supersatz: nach der ersten Übung ohne Pause direkt zur zweiten, nach der zweiten Pause und zurück */
+    if (pa !== null && !s.warm) {
+      const other = S.active.items[pa], open = other.sets.findIndex(q => !q.done && !q.warm);
+      if (it.ss) S.rest = null;
+      if (open >= 0 && S.ui.wf != null) { setTimeout(() => { S.ui.wf = pa; S.ui.ws = open; renderWorkout(); const sc = $('#woscroll'); if (sc) sc.scrollTop = 0; }, 350); if (it.ss) toast('Supersatz: weiter mit ' + EX[other.exId].name); }
+    }
     if (S.ui.wf != null) { const nx = it.sets.findIndex((q, k) => k > j && !q.done); S.ui.ws = nx >= 0 ? nx : j; if (nx < 0 && woProg(it).done === woProg(it).all) toast(EX[it.exId].name + ' geschafft. Wie lief es?'); }
     saveActive(); renderWorkout(); renderRest();
   },
@@ -282,6 +296,25 @@ const ACT = {
   },
   'rest-adj'(v, t) { const it = S.active.items[+t.dataset.i]; S.p.restOv = S.p.restOv || {}; S.p.restOv[it.exId] = Math.max(15, Math.min(600, restFor(it) + (+v))); saveProfile(); renderWorkout(); },
   sper(v) { S.ui.sper = v; render(); },
+  wseg(v) { S.ui.wseg = v; render(); },
+  'tr-open'(v) { S.ui.sheet = {t:'tr', id:v}; renderSheet(); },
+  'tr-cycle'(v) { const s = (tStat(v) + 1) % 4; setTrick(v, s); render(); toast(TR[v].name + ': ' + T_STAT[s][0]); },
+  'tr-set'(v) { const [id, s] = v.split(':'); setTrick(id, +s); if (S.ui.sheet && S.ui.sheet.t === 'trsug') { S.ui.sheet.ids = S.ui.sheet.ids.filter(x => x !== id); if (!S.ui.sheet.ids.length) S.ui.sheet = null; } render(); },
+  'tr-note'(v) { S.p.tricks = S.p.tricks || {}; S.p.tricks[v] = {...(S.p.tricks[v] || {s:0}), note:$('#tr-note').value.trim()}; saveProfile(); toast('Notiz gespeichert.'); },
+  'tr-lvl'(v) { S.ui.tl = +v === 0 || S.ui.tl === +v ? 0 : +v; render(); },
+  'tr-area'(v) { S.ui.ta = v; render(); },
+  'ws-trick'(v) { const f = S.ui.wf2, c = f.sel[v]; if (c === undefined) f.sel[v] = 'try'; else if (c === 'try') f.sel[v] = 'ok'; else delete f.sel[v]; render(); },
+  'ws-more'() { S.ui.sheet = {t:'trpick'}; renderSheet(); },
+  'ws-add'(v) { S.ui.wf2.sel[v] = 'try'; S.ui.sheet = null; render(); },
+  'ws-save'() { wakeSave(); },
+  'wk-open'(v) { S.ui.sheet = {t:'wk', id:v}; renderSheet(); },
+  'wk-del1'() { S.ui.sheet.del = true; renderSheet(); },
+  'wk-del2'(v) { S.p.tomb.push(v); saveProfile(); S.wake = S.wake.filter(w => w.id !== v); lsSave(); Cloud.del('wake', v); S.ui.sheet = null; render(); toast('Session gelöscht.'); },
+  'ph-sel'(v) { const s = S.ui.phSel = S.ui.phSel || [], k = s.indexOf(v); if (k >= 0) s.splice(k, 1); else { s.push(v); if (s.length > 2) s.shift(); } render(); },
+  'ph-cmp'() { S.ui.sheet = {t:'phcmp', ids:S.ui.phSel.slice()}; renderSheet(); },
+  'ph-del'(v, t) { if (t.dataset.sure !== '1') { t.dataset.sure = '1'; t.textContent = 'Wirklich löschen?'; return; } PhotoDB.del(v).then(loadPhotos).then(() => { S.ui.phSel = []; S.ui.sheet = null; render(); toast('Foto gelöscht.'); }); },
+  'csv-go'() { const n = csvImport(S.ui.sheet.an); S.ui.sheet = null; render(); toast(n + ' Einheiten importiert.'); },
+  'pl-ss'(v) { const pl = findPlan(S.p, S.ui.pv), it = pl.items[+v]; it.ss = !it.ss; saveProfile(); render(); toast(it.ss ? 'Supersatz mit der nächsten Übung.' : 'Supersatz aufgehoben.'); },
   'b-all'() { S.ui.ball = true; render(); },
   bper(v) { S.ui.bper = v; render(); },
   cal(v) { S.ui.calM = v; render(); },
@@ -384,8 +417,8 @@ const ACT = {
   wipe2() {
     S.sessions.forEach(s => Cloud.del('sessions', s.id)); S.runs.forEach(r => Cloud.del('runs', r.id)); Cloud.del('meta', 'profile');
     S.grip.forEach(g => Cloud.del('grip', g.id));
-    S.body.forEach(b => Cloud.del('body', b.id));
-    S.p = null; S.sessions = []; S.runs = []; S.grip = []; S.body = []; S.active = null; S.ui = {}; S.runT = {run:false, start:0, acc:0}; saveRunT(); S.tab = 'train'; tryLS(() => { localStorage.removeItem(LS); localStorage.removeItem(LS + '.active'); }); render();
+    S.body.forEach(b => Cloud.del('body', b.id)); S.wake.forEach(w => Cloud.del('wake', w.id));
+    S.p = null; S.sessions = []; S.runs = []; S.grip = []; S.body = []; S.wake = []; S.active = null; S.ui = {}; S.runT = {run:false, start:0, acc:0}; saveRunT(); S.tab = 'train'; tryLS(() => { localStorage.removeItem(LS); localStorage.removeItem(LS + '.active'); }); render();
   },
   copy() { const ta = $('#exptext'); try { navigator.clipboard.writeText(ta.value).then(() => toast('Kopiert.'), () => { ta.select(); }); } catch (e) { ta.select(); } },
   close() { if (S.gt) { clearInterval(GT.timer); S.gt = null; } S.ui.sheet = null; renderSheet(); }
@@ -403,6 +436,7 @@ document.addEventListener('input', ev => {
     const it = S.active.items[+t.dataset.i], s = it.sets[+t.dataset.s], v = parseNum(t.value);
     s[k] = v === null ? null : (k === 'reps' ? Math.round(v) : v); saveActive(); return;
   }
+  if (k === 'ws') { S.ui.wf2[t.dataset.f] = t.value; return; }
   if (k === 'wonote') { S.active.note = t.value; saveActive(); return; }
   if (k === 'q') { S.ui.q = t.value; $('#exlist').innerHTML = exListHTML(S.ui.q, S.ui.mf, 'ex-open'); return; }
   if (k === 'pq') { S.ui.pq = t.value; $('#picklist').innerHTML = exListHTML(S.ui.pq, S.ui.pm, 'pick'); return; }
@@ -420,6 +454,8 @@ document.addEventListener('input', ev => {
 document.addEventListener('change', ev => {
   const t = ev.target;
   if (t.id === 'imp' && t.files && t.files[0]) { importFile(t.files[0]); t.value = ''; return; }
+  if (t.id === 'ph-in' && t.files && t.files[0]) { addPhoto(t.files[0]); t.value = ''; return; }
+  if (t.id === 'csv-in' && t.files && t.files[0]) { const rd = new FileReader(); rd.onload = () => { S.ui.sheet = {t:'csv', an:csvAnalyze(String(rd.result))}; renderSheet(); }; rd.readAsText(t.files[0]); t.value = ''; return; }
   const c = t.dataset.chg; if (!c) return;
   if (c === 'time') { S.p.time = t.value; saveProfile(); }
   if (c === 'minutes') { S.p.minutes = +t.value; saveProfile(); render(); }
@@ -429,6 +465,8 @@ document.addEventListener('change', ev => {
   if (c === 'season') { S.p.season = t.value; saveProfile(); render(); }
   if (c === 'plname') { const pl = findPlan(S.p, t.dataset.v); if (pl && t.value.trim()) { pl.name = t.value.trim(); saveProfile(); render(); } }
   if (c === 'progname') { if (t.value.trim()) { activeProgram(S.p).name = t.value.trim(); saveProfile(); render(); } }
+  if (c === 'phdate') { S.ui.phDate = t.value; }
+  if (c === 'phpose') { S.ui.phPose = t.value; }
   if (c === 'gmtype') { S.ui.gm.type = t.value; renderSheet(); }
 });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && (S.active && !S.ui.woMin || S.runT.run)) wake(); });
@@ -437,7 +475,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 function render() {
   const ob = !S.p || !S.p.done;
   $('#tabs').hidden = ob;
-  const V = {train:() => S.ui.pv ? vPlanDetail(S.ui.pv) : vTrain(), stats:vStats, hist:vHist, body:vBodyTab, more:vMore};
+  const V = {train:() => S.ui.pv ? vPlanDetail(S.ui.pv) : vTrain(), stats:vStats, hist:vHist, body:vBodyTab, wake:vWake, more:vMore};
   $('#view').innerHTML = ob ? vOnboard() : (V[S.tab] || V.train)();
   $('#tabs').innerHTML = TABS.map(t => '<button data-act="tab" data-v="' + t[0] + '"' + (S.tab === t[0] ? ' aria-current="page"' : '') + '><span class="ti">' + I(ICONS[t[0]]) + '</span><span>' + t[1] + '</span></button>').join('');
   renderWorkout(); renderSheet(); renderRest(); bindChart();
@@ -466,8 +504,9 @@ if (S.p && S.p.done && (S.p.v || 1) < 2) {
 }
 S.tab = tryLS(() => localStorage.getItem(LS + '.tab')) || 'today';
 /* alte Bereichsnamen aus Version 1.x */
-({today:() => { S.tab = 'train'; }, plan:() => { S.tab = 'more'; S.ui.more = 'peri'; }, grip:() => { S.tab = 'body'; S.ui.bseg = 'grip'; }, run:() => { S.tab = 'more'; S.ui.more = 'run'; }, ex:() => { S.tab = 'stats'; S.ui.sseg = 'ex'; }}[S.tab] || (() => {}))();
+({today:() => { S.tab = 'train'; }, plan:() => { S.tab = 'more'; S.ui.more = 'peri'; }, grip:() => { S.tab = 'wake'; S.ui.wseg = 'grip'; }, run:() => { S.tab = 'more'; S.ui.more = 'run'; }, ex:() => { S.tab = 'stats'; S.ui.sseg = 'ex'; }}[S.tab] || (() => {}))();
 render();
+if (S.ui.bseg === 'grip') { S.ui.bseg = ''; }
 if (NATIVE) {
   /* Falls der WebView-Speicher leer ist (z. B. nach Wiederherstellung), Sicherungsdatei laden */
   if (!S.p) Nat.loadBackup().then(j => { if (j && j.p) { S.p = normProfile(j.p); S.sessions = j.sessions || []; S.runs = j.runs || []; S.grip = j.grip || []; S.body = j.body || []; lsSave(); render(); toast('Daten aus der Sicherungsdatei wiederhergestellt.'); } Nat.reschedule(); });

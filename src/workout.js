@@ -20,8 +20,9 @@ function firstOpenSet(it) { const k = it.sets.findIndex(s => !s.done); return k 
 
 function woRow(it, i) {
   const e = EX[it.exId], pg = woProg(it), full = pg.all && pg.done === pg.all, pct = pg.all ? pg.done / pg.all * 100 : 0;
-  return '<button class="worow' + (full ? ' full' : '') + '" data-act="wf-open" data-v="' + i + '">' + avatar(e) +
-    '<span class="exm"><b>' + esc(e.name) + '</b><small>' + esc(targetShort(it)) + (it.plan.slot === 99 ? ' · Griff-Finisher' : '') + '</small></span>' +
+  const ssIn = i > 0 && S.active.items[i - 1].ss;
+  return '<button class="worow' + (full ? ' full' : '') + (it.ss ? ' ssA' : '') + (ssIn ? ' ssB' : '') + '" data-act="wf-open" data-v="' + i + '">' + avatar(e) +
+    '<span class="exm"><b>' + esc(e.name) + '</b><small>' + (it.ss ? 'Supersatz · ' : '') + esc(targetShort(it)) + (it.plan.slot === 99 ? ' · Griff-Finisher' : '') + '</small></span>' +
     '<span class="wprog"><b class="num">' + (full ? I(ICONS.check, 'i s') : pg.done + '/' + pg.all) + '</b><i><em style="width:' + pct.toFixed(0) + '%"></em></i></span></button>';
 }
 function vWorkoutList() {
@@ -42,7 +43,8 @@ function vFocus(i) {
   let si = S.ui.ws; if (si == null || !it.sets[si]) si = firstOpenSet(it);
   const s = it.sets[si], noKg = mode === 'time' && e.eq === 'KG';
   const wn = it.sets.slice(0, si + 1).filter(q => !q.warm).length;
-  let h = '<div class="fhead">' + avatar(e) + '<div class="exm"><b>' + esc(e.name) + '</b><small>Übung ' + (i + 1) + ' von ' + a.items.length + ' · ' + esc(e.m) + '</small></div></div>' +
+  const pa = ssPartner(a, i);
+  let h = exPics(it.exId) + '<div class="fhead">' + avatar(e) + '<div class="exm"><b>' + esc(e.name) + '</b><small>Übung ' + (i + 1) + ' von ' + a.items.length + ' · ' + esc(e.m) + '</small></div></div>' + (pa !== null ? '<p class="tag" style="display:inline-block;margin:0 0 6px">Supersatz mit ' + esc(EX[a.items[pa].exId].name) + '</p>' : '') +
     '<p class="ftgt">' + targetLong(it) + '</p>' + (it.lastTxt ? '<p class="last">Letztes Mal: ' + esc(it.lastTxt) + '</p>' : '') + (S.p.exNotes[it.exId] ? '<p class="last">Notiz: ' + esc(S.p.exNotes[it.exId]) + '</p>' : '');
   /* Sätze als Leiste, aktueller Satz hervorgehoben */
   let n = 0;

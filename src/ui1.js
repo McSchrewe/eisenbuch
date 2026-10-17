@@ -1,7 +1,7 @@
 'use strict';
 /* ===== Eisenbuch: Zustand, Speicher, Diagramme ===== */
 const LS = 'eisenbuch.v1';
-const S = {p:null, sessions:[], runs:[], grip:[], body:[], gt:null, active:null, tab:'train', ui:{}, rest:null, runT:{run:false, start:0, acc:0}, cloud:{mode:'local', err:null}};
+const S = {p:null, sessions:[], runs:[], grip:[], body:[], wake:[], photos:[], photosLoaded:false, gt:null, active:null, tab:'train', ui:{}, rest:null, runT:{run:false, start:0, acc:0}, cloud:{mode:'local', err:null}};
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function tryLS(fn) { try { return fn(); } catch (e) { return null; } }
@@ -23,10 +23,10 @@ function normProfile(p) {
   if (!MODELS[p.model]) p.model = 'linear';
   return p;
 }
-function lsSave() { const j = JSON.stringify({app:'eisenbuch', p:S.p, sessions:S.sessions, runs:S.runs, grip:S.grip, body:S.body}); tryLS(() => localStorage.setItem(LS, j)); Nat.autosave(j); }
+function lsSave() { const j = JSON.stringify({app:'eisenbuch', p:S.p, sessions:S.sessions, runs:S.runs, grip:S.grip, body:S.body, wake:S.wake}); tryLS(() => localStorage.setItem(LS, j)); Nat.autosave(j); }
 function lsLoad() {
   const j = tryLS(() => JSON.parse(localStorage.getItem(LS) || 'null'));
-  if (j) { S.p = j.p ? normProfile(j.p) : null; S.sessions = j.sessions || []; S.runs = j.runs || []; S.grip = j.grip || []; S.body = j.body || []; }
+  if (j) { S.p = j.p ? normProfile(j.p) : null; S.sessions = j.sessions || []; S.runs = j.runs || []; S.grip = j.grip || []; S.body = j.body || []; S.wake = j.wake || []; }
   const a = tryLS(() => JSON.parse(localStorage.getItem(LS + '.active') || 'null')); if (a && a.items) S.active = a;
   const r = tryLS(() => JSON.parse(localStorage.getItem(LS + '.run') || 'null')); if (r) S.runT = r;
 }
@@ -49,15 +49,16 @@ const Cloud = {
       if (!user || !db) return null;
       const uid = await user.id(); if (!uid) return null;
       this.base = db.doc('data/users/' + uid + '/app');
-      const [pf, ss, rs, gs, bs] = await Promise.all([
+      const [pf, ss, rs, gs, bs, ws] = await Promise.all([
         this.base.collection('meta').doc('profile').get(),
         this.base.collection('sessions').limit(1000).get(),
         this.base.collection('runs').limit(1000).get(),
         this.base.collection('grip').limit(1000).get(),
-        this.base.collection('body').limit(1000).get()
+        this.base.collection('body').limit(1000).get(),
+        this.base.collection('wake').limit(1000).get()
       ]);
       this.ok = true;
-      return {profile:pf.exists ? pf.data() : null, sessions:ss.docs.map(d => d.data()), runs:rs.docs.map(d => d.data()), grip:gs.docs.map(d => d.data()), body:bs.docs.map(d => d.data())};
+      return {profile:pf.exists ? pf.data() : null, sessions:ss.docs.map(d => d.data()), runs:rs.docs.map(d => d.data()), grip:gs.docs.map(d => d.data()), body:bs.docs.map(d => d.data()), wake:ws.docs.map(d => d.data())};
     } catch (e) { S.cloud.err = (e && e.code) || 'fehler'; return null; }
   }
 };
@@ -87,6 +88,7 @@ function mergeCloud(c) {
   S.runs = mix(S.runs, c.runs, 'runs').sort((a, b) => a.t - b.t);
   S.grip = mix(S.grip, c.grip || [], 'grip').sort((a, b) => a.t - b.t);
   S.body = mix(S.body, c.body || [], 'body');
+  S.wake = mix(S.wake, c.wake || [], 'wake');
   lsSave(); render();
 }
 let pTimer = null;

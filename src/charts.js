@@ -75,6 +75,7 @@ function calendarCard() {
   const byDay = {};
   S.sessions.forEach(s => { (byDay[s.date] = byDay[s.date] || []).push({c:((s.planId && findPlan(S.p, s.planId)) || {}).color || 'var(--acc)', id:s.id, k:'s'}); });
   S.runs.forEach(r => { (byDay[r.date] = byDay[r.date] || []).push({c:'#7FB8C9', id:r.id, k:'r'}); });
+  S.wake.forEach(w => { (byDay[w.date] = byDay[w.date] || []).push({c:'#14B8A6', k:'w'}); });
   S.grip.forEach(g => { if (!(byDay[g.date] || []).some(x => x.k === 'g')) (byDay[g.date] = byDay[g.date] || []).push({c:'#B5A27A', k:'g'}); });
   let cells = '';
   for (let i = 0; i < off; i++) cells += '<span></span>';
@@ -88,5 +89,5 @@ function calendarCard() {
   const label = first.toLocaleDateString('de-DE', {month:'long', year:'numeric'});
   return '<div class="card cal"><div class="row"><button class="ic s" data-act="cal" data-v="' + prev + '" aria-label="Voriger Monat">' + I('<path d="M15 6l-6 6 6 6"/>') + '</button><b>' + label + '</b><button class="ic s" data-act="cal" data-v="' + next + '" aria-label="Nächster Monat">' + I(ICONS.chev) + '</button></div>' +
     '<div class="cgrid">' + DAYS.map(d => '<small>' + d + '</small>').join('') + cells + '</div>' +
-    '<p class="hint" style="margin-top:8px">' + cnt + ' Krafteinheiten. Gefüllt: Training (Farbe des Plans). Punkte: Lauf (blau), Griff-Test (braun). Umrandet: geplant.</p></div>';
+    '<p class="hint" style="margin-top:8px">' + cnt + ' Krafteinheiten. Gefüllt: Training (Farbe des Plans). Punkte: Lauf (blau), Wake-Session (türkis), Griff-Test (braun). Umrandet: geplant.</p></div>';
 }

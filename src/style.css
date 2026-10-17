@@ -316,3 +316,50 @@ svg.spark{width:76px;height:28px;flex:none}
 .cd.today{box-shadow:inset 0 0 0 2px var(--acc)}
 .cd i{position:absolute;bottom:3px;left:0;right:0;display:flex;justify-content:center;gap:2px}
 .cd em{width:5px;height:5px;border-radius:50%}
+
+/* ----- Übungsbilder ----- */
+.av.img{padding:0;overflow:hidden;background:#fff;border-color:color-mix(in srgb,var(--c) 60%,transparent)}
+.av.img img{width:100%;height:100%;object-fit:cover;display:block}
+.av.img i{display:none}
+.av i{font-style:normal}
+.fimgs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:4px 0 12px;border-radius:18px;overflow:hidden;background:#fff}
+.fimgs img{width:100%;aspect-ratio:3/2;object-fit:cover;display:block}
+.sheet .fimgs{margin-top:10px}
+.howto{margin:6px 0 0;padding-left:20px;color:var(--mute);font-size:14px;display:flex;flex-direction:column;gap:6px}
+/* ----- Supersätze ----- */
+.ssA,.ssB{position:relative;border-left:3px solid var(--warn);padding-left:10px!important}
+.ssA{border-bottom-color:transparent!important}
+.ic.on svg{color:var(--acc-ink)}
+/* ----- Wake ----- */
+.rider .rl{display:flex;align-items:baseline;gap:4px}
+.rider .rl b{font:500 48px/1 var(--fd);color:var(--acc)}
+.trow{display:flex;align-items:center;gap:12px;padding:8px 2px;border-bottom:1px solid var(--line)}
+.trow:last-child{border-bottom:0}
+.trow .av{width:40px;height:40px;font-size:15px}
+.tst{flex:none;min-width:92px;min-height:34px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:transparent;font:600 12px var(--fb);color:var(--mute)}
+.tst.s1{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
+.tst.s2{border-color:var(--acc);color:var(--acc);background:var(--acc-soft)}
+.tst.s3{border-color:var(--play);background:var(--play);color:#0B1A10}
+.lvls{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;background:var(--card);border-radius:18px;padding:12px 8px}
+.lvl{display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:0;padding:2px 0;border-radius:10px}
+.lvl.on{background:var(--acc-soft)}
+.lvl small{font-size:10px}
+.lvl i{display:flex;align-items:flex-end;width:14px;height:56px;border-radius:7px;background:var(--soft);overflow:hidden}
+.lvl em{display:block;width:100%;background:var(--acc)}
+.chip.ok{border-color:var(--play);background:var(--play);color:#0B1A10}
+/* ----- Fotos ----- */
+.phgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.ph{position:relative;padding:0;border:2px solid transparent;border-radius:12px;overflow:hidden;background:var(--card)}
+.ph img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
+.ph small{position:absolute;left:0;right:0;bottom:0;padding:3px 6px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;text-align:left}
+.ph.sel{border-color:var(--acc)}
+.phcmp{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.phcmp figure{margin:0}
+.phcmp img{width:100%;border-radius:12px;display:block}
+.phcmp figcaption{font-size:12px;color:var(--mute);margin-top:4px;text-align:center}
+/* ----- Rückblick, Import ----- */
+.review small.up{color:var(--ok)}.review small.dn{color:var(--heavy)}
+.maplist{display:flex;flex-direction:column;gap:4px;max-height:220px;overflow:auto;font-size:13px}
+.maplist div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding:4px 0}
+.maplist span{color:var(--mute)}
+.maplist b{font-weight:500;text-align:right}

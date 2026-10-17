@@ -410,6 +410,7 @@ function buildWorkout(p, sessions, n, planId) {
   let ids = plan.items.map(it => it.exId);
   if (pr.deload && ids.length > 3) ids = ids.slice(0, Math.max(3, Math.ceil(ids.length * 0.7)));
   const items = ids.map((id, i) => exPlan(p, id, i, pr, sessions));
+  items.forEach((it, i) => { it.ss = !!(plan.items[i] && plan.items[i].ss) && i < items.length - 1; }); /* Supersatz mit der nächsten Übung */
   /* Wakeboard-Fokus: Griff-Finisher, außer der Plan fordert den Griff schon (Unterarm-, Hang- oder Halteübung) */
   const GRIP_HEAVY = ['hanging-leg','hanging-knee','handle-hold','toes-bar','klimmzuege','klimmzug-unter','klimmzug-neutral'];
   if (p.wake && !ids.some(id => EX[id].m === 'Unterarme' || GRIP_HEAVY.includes(id))) items.push(exPlan(p, GRIP_ROT[n % GRIP_ROT.length], 99, pr, sessions));
