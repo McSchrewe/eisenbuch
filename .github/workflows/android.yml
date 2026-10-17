@@ -1,0 +1,44 @@
+# Baut bei jedem Push auf main eine neue APK und veröffentlicht sie als GitHub-Release.
+name: Android-APK bauen
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Abhängigkeiten installieren
+        run: npm ci
+      - name: Logik-Tests
+        run: npm test
+      - name: Web-Teil bauen und ins Android-Projekt kopieren
+        run: npm run build:web && npx cap sync android
+      - name: APK bauen
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew assembleRelease --no-daemon --stacktrace
+      - name: APK benennen
+        run: cp android/app/build/outputs/apk/release/app-release.apk eisenbuch-1.${{ github.run_number }}.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eisenbuch-apk
+          path: eisenbuch-1.${{ github.run_number }}.apk
+      - name: Release veröffentlichen
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.${{ github.run_number }}
+          name: Eisenbuch 1.${{ github.run_number }}
+          body: ${{ github.event.head_commit.message }}
+          files: eisenbuch-1.${{ github.run_number }}.apk
+          make_latest: true

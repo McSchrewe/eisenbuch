@@ -1,0 +1,25 @@
+{
+  "name": "eisenbuch",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Eisenbuch – Krafttraining, Periodisierung, Griffkraft, Laufen",
+  "scripts": {
+    "build:web": "node tools/build.js",
+    "sync": "npm run build:web && npx cap sync android",
+    "test": "node tools/test.js"
+  },
+  "dependencies": {
+    "@capacitor/android": "6.2.2",
+    "@capacitor/app": "6.0.3",
+    "@capacitor/core": "6.2.2",
+    "@capacitor/filesystem": "6.0.4",
+    "@capacitor/haptics": "6.0.3",
+    "@capacitor/local-notifications": "6.1.3",
+    "@capacitor/share": "6.0.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "6.2.2",
+    "@fontsource/barlow": "5.3.0",
+    "@fontsource/barlow-condensed": "5.3.0"
+  }
+}
