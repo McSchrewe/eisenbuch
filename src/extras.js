@@ -2,6 +2,8 @@
 /* ===== Eisenbuch: Übungsbilder, Supersätze, Fortschrittsfotos, Monatsrückblick, CSV-Import ===== */
 
 /* ----- Übungsbilder (free-exercise-db, gemeinfrei). EXIMG wird beim Bauen eingefügt. ----- */
+/* Einheitliche Linienfigur für Listen (im Artefakt eingebettet, in der App als Datei) */
+function exFig(id) { const n = typeof EXFIG !== 'undefined' && EXFIG[id]; if (!n) return null; return (typeof FIGDATA !== 'undefined' && FIGDATA[n]) || 'img/fig/' + n + '.jpg'; }
 function exImg(id, k) { const d = typeof EXIMG !== 'undefined' && EXIMG[id]; return d ? 'img/ex/' + d + '-' + (k || 0) + '.jpg' : null; }
 let EXINFO = null;
 function loadExInfo() { if (EXINFO || typeof EXIMG === 'undefined' || !Object.keys(EXIMG).length) return Promise.resolve(EXINFO); return fetch('img/ex/instructions.json').then(r => r.json()).then(j => { EXINFO = j; return j; }).catch(() => null); }

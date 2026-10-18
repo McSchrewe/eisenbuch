@@ -22,7 +22,7 @@ const FEEL = [['easy','Leicht'],['ok','Passend'],['hard','Schwer']];
 const RUNTYPES = ['Locker','Tempo','Intervalle','Langer Lauf','Wettkampf'];
 const MUSCLE_TAG = {Brust:['Br','#E5675B'], 'Rücken':['Rü','#5B9BE5'], Schultern:['Sc','#F2C744'], Bizeps:['Bi','#8B7CF6'], Trizeps:['Tr','#EC6FA8'], Quadrizeps:['Qu','#6DB37A'],
   Beinbeuger:['Bb','#14B8A6'], 'Gesäß':['Gs','#F59E0B'], Waden:['Wa','#7FB8C9'], Core:['Co','#E58F5B'], Unterarme:['Ua','#B5A27A'], 'Ganzkörper':['GK','#9AA59F']};
-function avatar(e) { const t = MUSCLE_TAG[e.m] || ['?', '#9AA59F'], im = exImg(e.id, 0); return '<span class="av' + (im ? ' img' : '') + '" style="--c:' + t[1] + '">' + (im ? '<img src="' + im + '" alt="" loading="lazy" onerror="this.parentNode.classList.remove(\'img\');this.remove()">' : '') + '<i>' + t[0] + '</i></span>'; }
+function avatar(e) { const t = MUSCLE_TAG[e.m] || ['?', '#9AA59F'], im = exFig(e.id); return '<span class="av fig' + (im ? ' has' : '') + '">' + (im ? '<img src="' + im + '" alt="" loading="lazy" onerror="this.parentNode.classList.remove(\'has\');this.remove()">' : '') + '<i>' + t[0] + '</i></span>'; }
 
 function planLine(it) {
   if (it.mode === 'time') return it.sets + ' Sätze · ' + it.reps + ' s' + (it.kg > 0 ? ' · ' + fkg(it.kg) : '');
@@ -253,7 +253,8 @@ function vData() {
     '<label class="btn ghost" for="imp">Sicherung laden</label><input type="file" id="imp" accept=".json,application/json" hidden>' +
     '<label class="btn ghost" for="csv-in">Training aus anderer App importieren (CSV)</label><input type="file" id="csv-in" accept=".csv,text/csv,text/plain" hidden></div>' +
     '<p class="hint" style="margin-top:8px">CSV-Import: Exporte aus Strong, Hevy, FitNotes und ähnlichen Apps mit Spalten für Datum, Übung, Gewicht und Wiederholungen. Übungsnamen werden automatisch zugeordnet.</p></div>' +
-    '<div class="row"><span class="sub">Alles löschen und neu einrichten</span>' + (S.ui.wipe ? '<button class="btn sm danger" data-act="wipe2">Wirklich löschen</button>' : '<button class="btn sm ghost" data-act="wipe1">Zurücksetzen</button>') + '</div>';
+    '<div class="row"><span class="sub">Alles löschen und neu einrichten</span>' + (S.ui.wipe ? '<button class="btn sm danger" data-act="wipe2">Wirklich löschen</button>' : '<button class="btn sm ghost" data-act="wipe1">Zurücksetzen</button>') + '</div>' +
+    '<p class="hint" style="margin-top:18px">Übungsfiguren: Everkinetic (everkinetic.com, github.com/everkinetic/data), Lizenz CC BY-SA 4.0, für die App eingefärbt und zugeschnitten; die angepassten Figuren stehen unter derselben Lizenz. Übungsfotos und Anleitungen: free-exercise-db (gemeinfrei).</p>';
 }
 
 /* ----- Laufen ----- */

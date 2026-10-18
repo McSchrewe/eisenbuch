@@ -122,8 +122,8 @@ function sheetHTML() {
   if (sh.t === 'ggoal') { const T = GTESTS[sh.type], g = p.gripGoal[sh.type]; return '<h2>Ziel: ' + T.name + '</h2><p>Setz dir einen Wert bis zum Saisonstart. Die App zeigt den Fortschritt als Balken.</p><div class="fld"><input id="gg-v" inputmode="decimal" value="' + (g ? fmt(g) : '') + '" placeholder="Zielwert"><span>' + T.unit + '</span></div><button class="btn wide" style="margin-top:12px" data-act="g-goal-save" data-v="' + sh.type + '">Speichern</button>' + (g ? '<button class="btn ghost wide" style="margin-top:8px" data-act="g-goal-del" data-v="' + sh.type + '">Ziel entfernen</button>' : '') + close; }
   if (sh.t === 'bgoal') return '<h2>Zielgewicht</h2><div class="fld"><input id="bg-v" inputmode="decimal" value="' + (p.bwGoal ? fmt(p.bwGoal) : '') + '" placeholder="z. B. 80"><span>kg</span></div><p class="hint">Leer lassen und speichern entfernt das Ziel.</p><button class="btn wide" style="margin-top:12px" data-act="bgoal-save">Speichern</button>' + close;
   if (sh.t === 'tr') return trickSheet(sh.id) + close;
-  if (sh.t === 'trsug') return '<h2>Sitzt der Trick?</h2><p>In mindestens 3 Sessions gelandet:</p>' + sh.ids.map(id => '<div class="exrow"><span>' + esc(TR[id].name) + '</span><button class="btn sm" data-act="tr-set" data-v="' + id + ':3">Auf „Sitzt“</button></div>').join('') + close;
-  if (sh.t === 'trpick') return '<h2>Trick hinzufügen</h2><div class="list">' + TRICKS.filter(t => S.ui.wf2.sel[t.id] === undefined).map(t => '<button class="exitem" data-act="ws-add" data-v="' + t.id + '"><span class="av" style="--c:' + T_AREAS[t.a][1] + '">' + t.lvl + '</span><span class="exm"><b>' + esc(t.name) + '</b><small>' + T_AREAS[t.a][0] + ' · ' + T_STAT[tStat(t.id)][0] + '</small></span></button>').join('') + '</div>' + close;
+  if (sh.t === 'trsug') return '<h2>Sitzt der Trick?</h2><p>An mindestens 3 Tagen gelandet:</p>' + sh.sug.map(x => '<div class="exrow"><span>' + esc(TR[x.id].name) + ' · ' + STANCE[x.k] + '</span><button class="btn sm" data-act="tr-set" data-v="' + x.id + ':3:' + x.k + '">Auf „Sitzt“</button></div>').join('') + close;
+  if (sh.t === 'trpick') { const k = (S.ui.wf2 && S.ui.wf2.st) || 's'; return '<h2>Trick hinzufügen (' + STANCE[k] + ')</h2><div class="list">' + TRICKS.filter(t => !(S.ui.wf2.sel[t.id] && S.ui.wf2.sel[t.id][k] !== undefined)).map(t => '<button class="exitem" data-act="ws-add" data-v="' + t.id + '"><span class="av" style="--c:' + T_AREAS[t.a][1] + '">' + t.lvl + '</span><span class="exm"><b>' + esc(t.name) + '</b><small>' + T_AREAS[t.a][0] + ' · ' + T_STAT[tSt(t.id, k)][0] + '</small></span></button>').join('') + '</div>' + close; }
   if (sh.t === 'wk') { const w = S.wake.find(x => x.id === sh.id); if (!w) return close; return '<p class="eyebrow">' + esc(dlong(w.date)) + '</p><h2>' + esc(w.spot) + (w.min ? ' · ' + w.min + ' min' : '') + '</h2>' + (w.laps ? '<p class="sub">' + w.laps + ' Runden</p>' : '') + (w.note ? '<p>' + esc(w.note) + '</p>' : '') + (w.tricks || []).map(x => '<div class="exrow"><span>' + esc((TR[x.id] || {name:x.id}).name) + '</span><span class="r">' + (x.ok ? 'gelandet' : 'geübt') + '</span></div>').join('') + (sh.del ? '<button class="btn danger wide" style="margin-top:12px" data-act="wk-del2" data-v="' + w.id + '">Endgültig löschen</button>' : '<button class="btn ghost wide" style="margin-top:12px" data-act="wk-del1">Session löschen</button>') + close; }
   if (sh.t === 'phcmp') return photoCmpHTML(sh.ids);
   if (sh.t === 'csv') return csvPreviewHTML(sh.an);
@@ -298,14 +298,15 @@ const ACT = {
   sper(v) { S.ui.sper = v; render(); },
   wseg(v) { S.ui.wseg = v; render(); },
   'tr-open'(v) { S.ui.sheet = {t:'tr', id:v}; renderSheet(); },
-  'tr-cycle'(v) { const s = (tStat(v) + 1) % 4; setTrick(v, s); render(); toast(TR[v].name + ': ' + T_STAT[s][0]); },
-  'tr-set'(v) { const [id, s] = v.split(':'); setTrick(id, +s); if (S.ui.sheet && S.ui.sheet.t === 'trsug') { S.ui.sheet.ids = S.ui.sheet.ids.filter(x => x !== id); if (!S.ui.sheet.ids.length) S.ui.sheet = null; } render(); },
-  'tr-note'(v) { S.p.tricks = S.p.tricks || {}; S.p.tricks[v] = {...(S.p.tricks[v] || {s:0}), note:$('#tr-note').value.trim()}; saveProfile(); toast('Notiz gespeichert.'); },
+  'tr-cycle'(v) { const [id, k] = v.split(':'); const s = (tSt(id, k || 's') + 1) % 4; setTrick(id, s, k || 's'); render(); toast(TR[id].name + ' · ' + STANCE[k || 's'] + ': ' + T_STAT[s][0]); },
+  'tr-set'(v) { const p = v.split(':'), id = p[0], s = +p[1], k = p[2] || 's'; setTrick(id, s, k); if (S.ui.sheet && S.ui.sheet.t === 'trsug') { S.ui.sheet.sug = S.ui.sheet.sug.filter(x => !(x.id === id && x.k === k)); if (!S.ui.sheet.sug.length) S.ui.sheet = null; } render(); },
+  'tr-note'(v) { S.p.tricks = S.p.tricks || {}; S.p.tricks[v] = {...(S.p.tricks[v] || {}), note:$('#tr-note').value.trim()}; saveProfile(); toast('Notiz gespeichert.'); },
   'tr-lvl'(v) { S.ui.tl = +v === 0 || S.ui.tl === +v ? 0 : +v; render(); },
   'tr-area'(v) { S.ui.ta = v; render(); },
-  'ws-trick'(v) { const f = S.ui.wf2, c = f.sel[v]; if (c === undefined) f.sel[v] = 'try'; else if (c === 'try') f.sel[v] = 'ok'; else delete f.sel[v]; render(); },
+  'ws-st'(v) { S.ui.wf2.st = v; render(); },
+  'ws-trick'(v) { const f = S.ui.wf2, k = f.st || 's', o = selOf(f, v), c = o[k]; if (c === undefined) o[k] = 'try'; else if (c === 'try') o[k] = 'ok'; else { delete o[k]; if (!Object.keys(o).length) delete f.sel[v]; } render(); },
   'ws-more'() { S.ui.sheet = {t:'trpick'}; renderSheet(); },
-  'ws-add'(v) { S.ui.wf2.sel[v] = 'try'; S.ui.sheet = null; render(); },
+  'ws-add'(v) { const f = S.ui.wf2, k = f.st || 's'; selOf(f, v)[k] = 'try'; S.ui.sheet = null; render(); },
   'ws-save'() { wakeSave(); },
   'wk-open'(v) { S.ui.sheet = {t:'wk', id:v}; renderSheet(); },
   'wk-del1'() { S.ui.sheet.del = true; renderSheet(); },

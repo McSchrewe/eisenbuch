@@ -322,6 +322,11 @@ svg.spark{width:76px;height:28px;flex:none}
 .av.img img{width:100%;height:100%;object-fit:cover;display:block}
 .av.img i{display:none}
 .av i{font-style:normal}
+/* Übungsfiguren im GymRun-Stil: heller Kreis, einheitlich in beiden Themes */
+.av.fig{padding:0;overflow:hidden;background:#DADDDB;border:0;color:#4A4F4D;font:600 14px var(--fd)}
+.av.fig img{width:100%;height:100%;object-fit:cover;display:block}
+.av.fig.has i{display:none}
+.fhead .av.fig{width:64px;height:64px}
 .fimgs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:4px 0 12px;border-radius:18px;overflow:hidden;background:#fff}
 .fimgs img{width:100%;aspect-ratio:3/2;object-fit:cover;display:block}
 .sheet .fimgs{margin-top:10px}
@@ -340,6 +345,13 @@ svg.spark{width:76px;height:28px;flex:none}
 .tst.s1{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
 .tst.s2{border-color:var(--acc);color:var(--acc);background:var(--acc-soft)}
 .tst.s3{border-color:var(--play);background:var(--play);color:#0B1A10}
+.tstp{display:flex;flex-direction:column;gap:5px;flex:none}
+.tst2{display:flex;align-items:center;gap:6px;min-width:82px;min-height:30px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);background:transparent;font:600 12px var(--fb);color:var(--mute)}
+.tst2 em{font-style:normal;font-size:10px;font-weight:700;letter-spacing:.3px;opacity:.7;margin-right:auto}
+.tst2.s1{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
+.tst2.s2{border-color:var(--acc);color:var(--acc);background:var(--acc-soft)}
+.tst2.s3{border-color:var(--play);background:var(--play);color:#0B1A10}
+.swtag{display:inline-block;vertical-align:middle;margin-left:4px;padding:1px 7px;border-radius:999px;font:700 10px var(--fb);background:var(--acc-soft);color:var(--acc)}
 .lvls{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;background:var(--card);border-radius:18px;padding:12px 8px}
 .lvl{display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:0;padding:2px 0;border-radius:10px}
 .lvl.on{background:var(--acc-soft)}
