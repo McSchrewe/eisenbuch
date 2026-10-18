@@ -44,7 +44,9 @@ function vFocus(i) {
   const s = it.sets[si], noKg = mode === 'time' && e.eq === 'KG';
   const wn = it.sets.slice(0, si + 1).filter(q => !q.warm).length;
   const pa = ssPartner(a, i);
-  let h = exPics(it.exId) + '<div class="fhead">' + avatar(e) + '<div class="exm"><b>' + esc(e.name) + '</b><small>Übung ' + (i + 1) + ' von ' + a.items.length + ' · ' + esc(e.m) + '</small></div></div>' + (pa !== null ? '<p class="tag" style="display:inline-block;margin:0 0 6px">Supersatz mit ' + esc(EX[a.items[pa].exId].name) + '</p>' : '') +
+  /* Fotos und Anleitung nur auf Antippen der Figur, damit alles Wichtige ohne Scrollen auf den Bildschirm passt */
+  const pics = S.ui.fpics ? exPics(it.exId) + exHowTo(it.exId) : '';
+  let h = '<div class="fhead"><button class="figbtn" data-act="fpics" aria-expanded="' + !!S.ui.fpics + '" aria-label="Ausführung ' + (S.ui.fpics ? 'ausblenden' : 'zeigen') + '">' + avatar(e) + '<span class="figi">' + (S.ui.fpics ? '×' : 'i') + '</span></button><div class="exm"><b>' + esc(e.name) + '</b><small>Übung ' + (i + 1) + ' von ' + a.items.length + ' · ' + esc(e.m) + '</small></div></div>' + pics + (pa !== null ? '<p class="tag" style="display:inline-block;margin:0 0 6px">Supersatz mit ' + esc(EX[a.items[pa].exId].name) + '</p>' : '') +
     '<p class="ftgt">' + targetLong(it) + '</p>' + (it.lastTxt ? '<p class="last">Letztes Mal: ' + esc(it.lastTxt) + '</p>' : '') + (S.p.exNotes[it.exId] ? '<p class="last">Notiz: ' + esc(S.p.exNotes[it.exId]) + '</p>' : '');
   /* Sätze als Leiste, aktueller Satz hervorgehoben */
   let n = 0;
@@ -56,6 +58,7 @@ function vFocus(i) {
     '<p class="hint" style="text-align:center;margin:6px 0 0">' + (s.done ? 'Erledigt. Antippen setzt den Satz zurück.' : 'Satz erledigt? Haken antippen. Pause ' + fmtDur(restFor(it) * 1000) + '.') + '</p>';
   if (pg.done === pg.all && pg.all) h += '<div class="card" style="margin-top:14px"><h3>Übung fertig</h3><p class="sub" style="margin-top:4px">Wie viele Wiederholungen wären im letzten Satz noch gegangen? Steuert die Gewichte der nächsten Wochen.</p><div class="chips">' + RIR_FEEL.map(f => '<button class="chip" data-act="feel" data-i="' + i + '" data-v="' + f[0] + '" aria-pressed="' + (it.feel === f[0]) + '">' + f[1] + '</button>').join('') + '</div></div>';
   else h += '<div class="chips" style="margin-top:14px;justify-content:center">' + RIR_FEEL.map(f => '<button class="chip sm" data-act="feel" data-i="' + i + '" data-v="' + f[0] + '" aria-pressed="' + (it.feel === f[0]) + '">' + f[1] + '</button>').join('') + '</div>';
+  h += '<div class="fnav"><button class="btn ghost" data-act="wf-go" data-v="' + (i - 1) + '"' + (i ? '' : ' disabled') + '>‹ Vorherige</button><button class="btn' + (pg.done === pg.all ? '' : ' ghost') + '" data-act="wf-go" data-v="' + (i + 1 < a.items.length ? i + 1 : 'list') + '">' + (i + 1 < a.items.length ? 'Nächste ›' : 'Zur Übersicht') + '</button></div>';
   /* Werkzeuge */
   const tools = [];
   if ((mode === 'pct' || (mode === 'dp' && pl.kg)) && ['LH','KH','MA','KB'].includes(e.eq) && !it.sets.some(q => q.warm)) tools.push('<button class="link" data-act="warm" data-i="' + i + '">Aufwärmsätze</button>');
@@ -69,7 +72,7 @@ function vFocus(i) {
   const hs = history(S.sessions, it.exId);
   if (hs.length >= 2) h += '<div class="card" style="margin-top:12px"><h2>Fortschritt</h2><p class="readout" data-lro>' + esc(dshort(hs[hs.length - 1].date) + ': ' + fmt(hs[hs.length - 1].v) + ' ' + hs[0].unit) + '</p>' + lineChart(hs.slice(-16), hs[0].unit, 'Verlauf ' + e.name) + '<p class="hint">' + (hs[0].unit === 'kg' ? 'Geschätztes 1RM je Einheit' : hs[0].unit === 's' ? 'Längste Haltezeit je Einheit' : 'Meiste Wiederholungen je Einheit') + '. Bestwert: ' + fmt(Math.max(...hs.map(x => x.v))) + ' ' + hs[0].unit + '.</p></div>';
   else if (hs.length === 1) h += '<p class="hint" style="margin-top:12px;text-align:center">Ein früherer Eintrag. Die Verlaufskurve erscheint ab der zweiten Einheit.</p>';
-  h += '<div class="fnav"><button class="btn ghost" data-act="wf-go" data-v="' + (i - 1) + '"' + (i ? '' : ' disabled') + '>‹ Vorherige</button><button class="btn' + (pg.done === pg.all ? '' : ' ghost') + '" data-act="wf-go" data-v="' + (i + 1 < a.items.length ? i + 1 : 'list') + '">' + (i + 1 < a.items.length ? 'Nächste ›' : 'Zur Übersicht') + '</button></div><div style="height:120px"></div>';
+  h += '<div style="height:120px"></div>';
   return h;
 }
 function vWorkout() {

@@ -115,6 +115,99 @@ function swl(t) { return Math.max(t.lvl, 3); }
 /* Switch-Voraussetzung: Trick regular gestanden und alle Voraussetzungen auch in Switch gestanden */
 function preOkW(t) { return tSt(t.id, 's') >= 2 && t.pre.every(id => tSt(id, 'w') >= 2); }
 
+/* ----- Invert-Steckbrief: Anfahrt | Bewegung | Drehung | Landung (Definitionen nach wakeboard.com Trick List) ----- */
+const T_AP = {HS:['Heelside', 'auf den Fersen anfahren, Brust zum Lift'], TS:['Toeside', 'auf den Zehen anfahren, Rücken zum Lift'], SH:['Switch Heelside', 'aus Switch auf den Fersen anfahren']};
+const T_MV = {
+  br:['Backroll', 'Rolle rückwärts, seitlich gekippt (Off-Axis): Du fällst nach hinten über die Schulter, das Board zieht wie ein Rad seitlich über den Kopf.'],
+  fr:['Frontroll', 'Rolle vorwärts, seitlich gekippt (Off-Axis): Kopf und Oberkörper werfen sich nach vorn Richtung Wasser, das Board zieht seitlich über den Kopf.'],
+  bf:['Rückwärtssalto', 'Gerader Salto rückwärts (On-Axis): Schultern bleiben gerade, kein seitliches Kippen, du drehst sauber über Kopf nach hinten.'],
+  ff:['Vorwärtssalto', 'Gerader Salto vorwärts (On-Axis): Das Tail kommt über den Kopf, ohne seitliches Kippen.'],
+  ra:['Raley', 'Keine Rolle: Körper streckt sich waagerecht, das Board schwingt hinter dir nach oben über Kopfhöhe und zurück unter dich.'],
+  dr:['Double Roll', 'Zwei Backrolls hintereinander in einem Sprung.']};
+const T_LAND = {regular:['Regular', 'gleicher Fuß vorn wie beim Anfahren'], switch:['Switch', 'anderer Fuß vorn'], blind:['Blind', 'Handle hinter dem Rücken'], fakie:['Fakie', 'rückwärts ohne Fußwechsel']};
+const T_INV_RAW = `
+k-backroll|HS|br||regular
+k-tantrum|HS|bf||regular
+k-tsbackroll|TS|br||regular
+k-mexroll|HS|fr||regular
+k-frontroll|TS|fr||regular
+k-frontflip|HS|ff||regular
+k-raley|HS|ra||regular
+k-rtr|HS|br|FS180|switch
+k-halfcab|SH|br|FS180|regular
+k-scarecrow|TS|fr|FS180|switch
+k-elephant|TS|fr|FS180 + Rewind 180|fakie
+k-krypt|HS|ra|FS180|switch
+k-911|HS|ra|Shifty|regular
+k-blindjudge|HS|ra|BS180|blind
+k-sbend|HS|ra|BS360 Ole|regular
+k-313|HS|ra|FS360 Handlepass|regular
+k-whirly|HS|bf|BS360 Ole|regular
+k-glide|HS|ra|Method-Grab|regular
+k-mobe|HS|br|FS360 Handlepass|regular
+air-backroll|HS|br||regular
+air-rtr|HS|br|FS180|switch
+air-kgb|HS|br|BS360 Ole|regular
+air-backmobe|HS|br|FS360 Handlepass|regular
+air-frontroll|TS|fr||regular
+air-tsmobe|TS|fr|FS360|regular
+air-frontflip|HS|ff||regular
+air-belair|HS|bf||regular
+air-belair180|HS|bf|FS180|switch
+air-belairmobe|HS|bf|BS360 Handlepass|regular
+air-raley|HS|ra||regular
+air-tsraley|TS|ra||regular
+air-krypt|HS|ra|FS180|switch
+air-911|HS|ra|Shifty|regular
+air-blindjudge|HS|ra|BS180|blind
+air-sbend|HS|ra|BS360 Ole|regular
+air-vulcan|HS|ra|BS360 Ole + FS180|fakie
+air-sbendblind|HS|ra|BS360 Ole + BS180|blind
+air-313|HS|ra|FS360 Handlepass|regular
+air-540mobe|HS|ra|540 Handlepass|switch
+air-doubleroll|HS|dr||regular
+`;
+const T_INV = {}; T_INV_RAW.trim().split('\n').forEach(l => { const f = l.split('|'); T_INV[f[0]] = {ap:f[1], mv:f[2], rot:f[3], land:f[4]}; });
+/* Ähnliche Tricks: gleicher Bereich (Kicker oder Air), genau ein Merkmal anders */
+function invNeighbors(id) {
+  const a = T_INV[id], t = TR[id]; if (!a) return [];
+  const out = [];
+  Object.entries(T_INV).forEach(([oid, b]) => {
+    if (oid === id || TR[oid].a !== t.a) return;
+    const d = [];
+    if (a.ap !== b.ap) d.push('Anfahrt ' + T_AP[b.ap][0] + ' statt ' + T_AP[a.ap][0]);
+    if (a.mv !== b.mv) d.push(T_MV[b.mv][0] + ' statt ' + T_MV[a.mv][0]);
+    if (a.rot !== b.rot) d.push(b.rot ? (a.rot ? b.rot + ' statt ' + a.rot : 'zusätzlich ' + b.rot) : 'ohne ' + a.rot);
+    if (d.length === 1) out.push({id:oid, why:d[0]});
+  });
+  return out.slice(0, 5);
+}
+function invCard(id) {
+  const a = T_INV[id]; if (!a) return '';
+  const row = (k, v, sub) => '<div class="exrow"><span>' + k + '</span><span class="r"><b>' + esc(v) + '</b>' + (sub ? '<br><small>' + esc(sub) + '</small>' : '') + '</span></div>';
+  const nb = invNeighbors(id);
+  return '<div class="card invc"><h3>Steckbrief</h3>' + row('Anfahrt', T_AP[a.ap][0], T_AP[a.ap][1]) + row('Bewegung', T_MV[a.mv][0]) + row('Drehung', a.rot || 'keine') + row('Landung', T_LAND[a.land][0], T_LAND[a.land][1]) +
+    '<p class="hint" style="margin-top:8px">' + esc(T_MV[a.mv][1]) + '</p>' +
+    (nb.length ? '<h3 style="margin-top:12px">Nicht verwechseln mit</h3><div class="list">' + nb.map(x => '<button class="exitem" data-act="tr-open" data-v="' + x.id + '"><span class="exm"><b>' + esc(TR[x.id].name) + '</b><small>' + esc(x.why) + '</small></span></button>').join('') + '</div>' : '') +
+    '<button class="link" data-act="tr-inv" style="margin-top:6px">Alle Inverts im Vergleich</button></div>';
+}
+/* Vergleichstabelle: Grundbewegung × Anfahrt, darunter die Varianten mit Drehung */
+function invSheet() {
+  const cell = (mv, ap) => { const ids = Object.keys(T_INV).filter(id => T_INV[id].mv === mv && T_INV[id].ap === ap && !T_INV[id].rot); return ids.length ? ids.map(id => '<button class="link" data-act="tr-open" data-v="' + id + '">' + esc(TR[id].name.replace(/ \(Kicker\)/, ' (K)')) + '</button>').join('<br>') : '<span class="sub">–</span>'; };
+  let h = '<h2>Inverts im Vergleich</h2><p class="hint">Drei Fragen unterscheiden fast jeden Invert: <b>Von welcher Kante</b> springst du ab (Heelside oder Toeside)? <b>Wohin kippst du</b> (rückwärts oder vorwärts)? Und <b>rollst</b> du seitlich (Roll), drehst du <b>gerade über Kopf</b> (Salto/Flip) oder <b>streckst</b> du dich (Raley)?</p>' +
+    '<div class="scrollx"><table class="tbl invt"><thead><tr><th>Bewegung</th><th>Heelside</th><th>Toeside</th></tr></thead><tbody>' +
+    ['br', 'fr', 'bf', 'ff', 'ra'].map(mv => '<tr><td><b>' + T_MV[mv][0] + '</b></td><td>' + cell(mv, 'HS') + '</td><td>' + cell(mv, 'TS') + '</td></tr>').join('') + '</tbody></table></div>' +
+    '<p class="hint" style="margin-top:6px">(K) = vom Kicker, sonst aus der eigenen Kante (Air).</p>' +
+    '<h3 style="margin-top:12px">Merksätze</h3><div class="stack"><p><b>Backroll vs. Tantrum:</b> beide Heelside rückwärts. Der Backroll kippt seitlich über die Schulter, der Tantrum ist ein gerader Salto mit geraden Schultern.</p>' +
+    '<p><b>Frontroll vs. Mexican Roll:</b> gleiche Bewegung nach vorn, aber Frontroll von der Toeside-, Mexican Roll von der Heelside-Kante.</p>' +
+    '<p><b>Toeside Backroll vs. Frontroll:</b> gleiche Toeside-Kante, aber der Backroll kippt nach hinten, der Frontroll nach vorn Richtung Wasser.</p>' +
+    '<p><b>Frontroll vs. Front Flip:</b> Frontroll seitlich gekippt, Front Flip gerade über Nose und Tail.</p>' +
+    '<p><b>Raley-Familie:</b> Krypt (+FS180, switch), Blind Judge (+BS180, blind), 911 (+Shifty), S-Bend (+BS360 Ole), 313 (+FS360 mit Handlepass).</p></div>';
+  const groups = {};
+  Object.keys(T_INV).filter(id => T_INV[id].rot).forEach(id => { const k = T_MV[T_INV[id].mv][0] + ' · ' + T_AP[T_INV[id].ap][0]; (groups[k] = groups[k] || []).push(id); });
+  h += '<h3 style="margin-top:12px">Mit Drehung</h3>' + Object.entries(groups).map(([k, ids]) => '<p class="lab" style="margin-top:8px">' + esc(k) + '</p>' + ids.map(id => '<div class="exrow"><button class="link" style="padding:0;text-align:left" data-act="tr-open" data-v="' + id + '">' + esc(TR[id].name) + '</button><span class="r">' + esc(T_INV[id].rot) + ' · ' + esc(T_LAND[T_INV[id].land][0]) + '</span></div>').join('')).join('');
+  return h;
+}
 /* Alte Trick-IDs übernehmen: frühere eigene Switch-Tricks werden zur Switch-Spur, der allgemeine „Mobe“ zum Air Back Mobe */
 function migrateTricks(p) {
   const t = p.tricks; if (!t) return;
@@ -191,6 +284,7 @@ function vWake() {
   const af = S.ui.ta || '', lf = S.ui.tl || 0;
   h += '<div class="row" style="margin-top:10px"><span class="sub">' + (lf ? 'Level ' + lf + ' (anderes Level oben antippen)' : 'Alle Level') + '</span>' + (lf ? '<button class="link" data-act="tr-lvl" data-v="0">Alle Level zeigen</button>' : '') + '</div>';
   h += '<div class="chips scrollchips">' + [['', 'Alle']].concat(Object.entries(T_AREAS).map(([k, v]) => [k, v[0]])).map(x => '<button class="chip" data-act="tr-area" data-v="' + x[0] + '" aria-pressed="' + (af === x[0]) + '">' + x[1] + '</button>').join('') + '</div>';
+  if (!af || af === 'K' || af === 'A') h += '<button class="banner" data-act="tr-inv"><span><b>Inverts im Vergleich</b><br><small>Backroll, Frontroll, Mexican Roll, Tantrum, Raley … unterscheiden</small></span>' + I(ICONS.chev || ICONS.check, 'i s') + '</button>';
   const list = TRICKS.filter(t => (!af || t.a === af) && (!lf || t.lvl === lf));
   let cur = 0, out = '';
   list.forEach(t => { if (t.lvl !== cur) { if (cur) out += '</div>'; out += '<h2 class="sec">Level ' + t.lvl + '</h2><div class="list">'; cur = t.lvl; } out += trickRow(t); });
@@ -202,7 +296,7 @@ function trickSheet(id) {
   const ses = S.wake.filter(w => (w.tricks || []).some(x => x.id === id));
   const okCount = k => S.wake.reduce((a, w) => a + (w.tricks || []).filter(x => x.id === id && x.ok && (x.k || 's') === k).length, 0);
   const statusRow = k => '<p class="lab" style="margin-top:10px">' + STANCE[k] + '</p><div class="chips">' + T_STAT.map((x, i) => '<button class="chip" data-act="tr-set" data-v="' + id + ':' + i + ':' + k + '" aria-pressed="' + (tSt(id, k) === i) + '">' + x[0] + '</button>').join('') + '</div>';
-  return '<p class="eyebrow">' + ar[0] + ' · Level ' + t.lvl + '</p><h2>' + esc(t.name) + '</h2><p>' + esc(t.tip) + '</p>' +
+  return '<p class="eyebrow">' + ar[0] + ' · Level ' + t.lvl + '</p><h2>' + esc(t.name) + '</h2><p>' + esc(t.tip) + '</p>' + invCard(id) +
     (t.pre.length ? '<h3 style="margin-top:12px">Voraussetzungen (Regular)</h3><div class="list">' + t.pre.map(p => { const q = TR[p], qs = tSt(p, 's'); return '<button class="exitem" data-act="tr-open" data-v="' + p + '"><span class="av" style="--c:' + T_AREAS[q.a][1] + '">' + q.lvl + '</span><span class="exm"><b>' + esc(q.name) + '</b><small>' + T_STAT[qs][0] + '</small></span>' + (qs >= 2 ? I(ICONS.check, 'i s') : '') + '</button>'; }).join('') + '</div>' : '') +
     '<h3 style="margin-top:12px">Status</h3>' + statusRow('s') + statusRow('w') +
     (st.first || st.fw ? '<p class="hint" style="margin-top:8px">' + (st.first ? 'Regular erstmals gestanden: ' + esc(dshort(st.first)) : '') + (st.first && st.fw ? ' · ' : '') + (st.fw ? 'Switch erstmals gestanden: ' + esc(dshort(st.fw)) : '') + '</p>' : '') +
