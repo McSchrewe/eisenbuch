@@ -19,6 +19,8 @@ const ICONS = {
 };
 const TABS = [['train','Training'],['hist','Verlauf'],['stats','Statistik'],['body','Körper'],['wake','Wake']];
 const FEEL = [['easy','Leicht'],['ok','Passend'],['hard','Schwer']];
+/* Im Training: Gefühl als Wiederholungen in Reserve (RIR) */
+const RIR_FEEL = [['easy','Leicht · 3+ übrig'],['ok','Passend · 1–2 übrig'],['hard','Limit · 0 übrig']];
 const RUNTYPES = ['Locker','Tempo','Intervalle','Langer Lauf','Wettkampf'];
 const MUSCLE_TAG = {Brust:['Br','#E5675B'], 'Rücken':['Rü','#5B9BE5'], Schultern:['Sc','#F2C744'], Bizeps:['Bi','#8B7CF6'], Trizeps:['Tr','#EC6FA8'], Quadrizeps:['Qu','#6DB37A'],
   Beinbeuger:['Bb','#14B8A6'], 'Gesäß':['Gs','#F59E0B'], Waden:['Wa','#7FB8C9'], Core:['Co','#E58F5B'], Unterarme:['Ua','#B5A27A'], 'Ganzkörper':['GK','#9AA59F']};
@@ -223,7 +225,9 @@ function vPeri() {
     '<label class="lab">Modell</label><div class="chips">' + Object.entries(MODELS).map(([k, m]) => '<button class="chip" data-act="p-model" data-v="' + k + '" aria-pressed="' + (p.model === k) + '">' + m.name + '</button>').join('') + '</div>' +
     '<details><summary>Wie die Gewichte berechnet werden</summary><div class="stack" style="padding:6px 0">' +
     '<p>Jede Grundübung hat ein geschätztes Maximalgewicht (1RM). Das Trainingsgewicht ist ein Prozentsatz davon, gerundet auf die kleinste Steigerung (Langhantel 2,5 kg, Kurzhantel 2 kg).</p>' +
-    '<p>Nach jeder Übung gibst du an, wie es lief. <b>Leicht</b> und alle Wiederholungen geschafft: nächstes Mal eine Stufe mehr. <b>Schwer</b> oder deutlich zu wenige: eine Stufe weniger.</p>' +
+    '<p>Nach jeder Übung gibst du an, wie viele Wiederholungen noch gegangen wären: <b>Leicht</b> (3+), <b>Passend</b> (1–2) oder <b>Limit</b> (0). Die Planwerte liegen bei etwa 2 Wiederholungen Reserve.</p>' +
+    '<p><b>Mehr geschafft als geplant?</b> Die App vergleicht deine Leistung mit dem Plan. Trägst du z. B. 80 kg × 10 statt 70 kg × 10 bei „Passend“ ein, steigt das 1RM sofort (höchstens +10 % pro Einheit) und alle folgenden Wochen werden neu berechnet. Werte über +30 % gelten als Tippfehler und werden nicht übernommen.</p>' +
+    '<p><b>Zwei schwache Einheiten in Folge</b> (Limit oder Wiederholungen deutlich verfehlt) senken das 1RM moderat, eine einzelne nur das nächste Gewicht um eine Stufe.</p>' +
     '<p>Am Blockende steigt das 1RM um 2,5 kg (Oberkörper) bzw. 5 kg (Beine, Kreuzheben), wenn du in mindestens 75 % der Einheiten alle Wiederholungen geschafft hast.</p>' +
     '<p>Isolationsübungen: erst die Wiederholungen bis zum oberen Ende steigern, dann das Gewicht. Nach mindestens 14 Tagen Pause startet die nächste Einheit 10 % leichter.</p></div></details></div>';
   h += '<div class="card"><h2>Wochen im Block</h2><div class="scrollx"><table class="tbl"><thead><tr><th>Wo.</th><th>Phase</th><th>Last</th><th>Sätze</th><th>' + esc(EX[key].name.split(' (')[0]) + '</th></tr></thead><tbody>';

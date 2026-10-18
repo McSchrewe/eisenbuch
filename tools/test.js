@@ -30,3 +30,15 @@ for (const k of Object.keys(T.PROG_TPL)) { const pg = T.programFromTemplate(k); 
 assert.strictEqual(Math.round(T.EPLEY(100, 5) * 10) / 10, 116.7);
 assert.deepStrictEqual(JSON.parse(JSON.stringify(T.plateCalc(100))).out, [[25, 1], [15, 1]]);
 console.log('OK:', T.EXLIST.length, 'Übungen,', n, 'simulierte Einheiten, alle Prüfungen bestanden');
+/* Autoregulation: Plan 70 kg × 10, tatsächlich 80 kg × 10 bei „passend“ → 1RM steigt (max. +10 %), Folgewochen schwerer */
+{
+  const mk = () => { const p = T.defaultProfile(); Object.assign(p, {model:'linear', split:'fullbody', days:[0, 2, 4], done:true}); p.e1 = {bankdruecken:100}; p.block.e1Start = {...p.e1}; p.adj = {}; return p; };
+  const run = (p, kg, reps, feel, plan) => T.applyProgress(p, {exercises:[{exId:'bankdruecken', feel, plan:plan || {mode:'pct', kg:70, reps:10, sets:4, pct:0.7}, sets:Array.from({length:4}, () => ({kg, reps, done:true}))}]});
+  let p = mk(); run(p, 70, 10, 'ok'); assert.strictEqual(p.e1.bankdruecken, 100, 'Plan erfüllt darf 1RM nicht ändern');
+  p = mk(); const ch = run(p, 80, 10, 'ok'); assert.strictEqual(p.e1.bankdruecken, 110, '80 statt 70 kg: 1RM +10 % erwartet, ist ' + p.e1.bankdruecken); assert(ch[0].to === 110);
+  const w2 = T.buildWorkout(p, [], 3); const b2 = w2.items.find(it => it.exId === 'bankdruecken'); assert(b2 && b2.kg === 82.5, 'Woche 2 sollte 82,5 kg (75 % von 110) vorgeben, ist ' + (b2 && b2.kg));
+  p = mk(); run(p, 70, 10, 'easy'); assert(p.e1.bankdruecken > 100 && p.e1.bankdruecken < 105, 'Leicht bei Plan: kleine Steigerung, ist ' + p.e1.bankdruecken);
+  p = mk(); const odd = run(p, 700, 10, 'ok'); assert.strictEqual(p.e1.bankdruecken, 100, 'Tippfehler darf 1RM nicht ändern'); assert(odd[0].odd);
+  p = mk(); run(p, 70, 6, 'hard'); assert.strictEqual(p.e1.bankdruecken, 100, 'eine schwache Einheit senkt nicht'); run(p, 70, 6, 'hard'); assert(p.e1.bankdruecken < 100 && p.e1.bankdruecken >= 90, 'zwei schwache Einheiten senken moderat, ist ' + p.e1.bankdruecken);
+}
+console.log('OK: Autoregulation (Mehrleistung, Tippfehler, zwei schwache Einheiten)');

@@ -51,44 +51,85 @@ r-forward|Forward Slide auf dem Rail|R|6|r-5050,b-forward|Board quer auf dem Rai
 r-backward|Backward Slide auf dem Rail|R|6|r-forward,b-backward|Backward auf dem schmalen Rail, Gewicht genau über dem Rail.
 r-fs270out|FS270 raus (Rail)|R|6|r-forward,b-fs180out|Aus dem Slide frontside 270 raus, kräftiger Pop am Ende.
 grab-ollie|Ollie mit Grab|F|7|loaded-ollie,k-grab|Loaded Ollie mit kurzem Grab.
+ollie-shifty|Ollie Shifty|F|7|loaded-ollie,k-fs-shifty|Im Loaded Ollie das Board kurz quer drehen und vor der Landung zurück.
 ollie-bs180|Ollie BS180|F|7|ollie-fs180,surf-bs180|Backside Drehung in der Luft mit Handlepass.
-k-bs180|Kicker BS180|K|7|k-fs180-l,surf-bs180|Backside vom Kicker, Handle hinter dem Rücken übergeben.
 k-backroll|Backroll (Kicker)|K|7|k-straight-l|Erste Rolle: Heelside anfahren, Schulter fallen lassen, Blick über die Schulter. Erst mit Coach oder Video.
-k-frontroll|Frontroll (Kicker)|K|7|k-backroll|Rolle nach vorn. Kinn zur Brust, Handle nah am Körper.
+k-tantrum|Tantrum (Kicker)|K|7|k-straight-l|Rückwärtssalto von der Heelside-Kante: Schultern gerade lassen, Kante bis zur Lippe halten, Kopf führt nach hinten.
+k-tsbackroll|Toeside Backroll (Kicker)|K|7|k-backroll,toeside|Backroll aus der Toeside-Anfahrt, Schulter in Richtung Wasser fallen lassen.
+k-mexroll|Mexican Roll (Kicker)|K|7|k-straight-l|Heelside anfahren, Kopf und Körper beim Absprung nach vorn werfen. Wird oft mit dem Frontroll verwechselt.
+k-frontroll|Frontroll (Kicker)|K|7|k-backroll,toeside|Toeside anfahren, Kinn zur Brust, Kopf und Körper nach vorn werfen, Handle nah am Körper.
+k-rtr|Roll to Revert (Kicker)|K|7|k-backroll,surf-fs180|Backroll mit Frontside-180, Landung switch.
+k-scarecrow|Scarecrow (Kicker)|K|7|k-frontroll,surf-fs180|Toeside Frontroll mit Frontside-180.
+k-frontflip|Front Flip (Kicker)|K|7|k-frontroll|Salto nach vorn, Tail kommt über den Kopf.
 r-press|Press auf dem Rail (Nose, Tail)|R|7|r-5050,wheelie|Gewicht auf Nose oder Tail drücken und halten.
 r-ollie-on|Ollie on (50-50)|R|7|r-5050,loaded-ollie|Mit Ollie aufs Rail springen statt auffahren.
 r-switchup|SwitchUp 90|R|7|r-forward|Auf dem Rail von 50-50 in einen Slide wechseln.
 r-bs180out|BS180 raus (Rail)|R|7|b-bs180,r-backward|Am Railende backside mit Handlepass rausdrehen.
+k-bs180|Kicker BS180|K|7|k-fs180-l,surf-bs180|Backside vom Kicker, Handle hinter dem Rücken übergeben.
 air-backroll|Air Backroll|A|7|loaded-ollie,k-backroll|Backroll aus der eigenen Kante, ohne Kicker. Zug laden, Kante bis zum Schluss halten.
-ollie-360|Ollie 360|F|8|ollie-bs180,surf-360|Volle Drehung im Ollie mit Handlepass.
+air-rtr|Air Roll to Revert|A|7|air-backroll,surf-fs180|Air Backroll mit Frontside-180, Landung switch.
+ollie-360|Ollie BS360 (Handlepass)|F|8|ollie-bs180,surf-360|Volle Backside-Drehung im Ollie mit Handlepass.
+ollie-fs360|Ollie FS360 (Handlepass)|F|8|ollie-fs180,surf-360|Volle Frontside-Drehung im Ollie, Handlepass am Ende der Drehung.
+ollie-fs540|Ollie FS540|F|8|ollie-fs360|Eineinhalb Drehungen frontside im Ollie, Landung switch.
 k-bs360|Kicker BS360|K|8|k-bs180|360 backside vom Kicker mit Handlepass.
-k-raley|Kicker Raley|K|8|k-backroll|Gestreckter Körper in der Luft, Board über den Kopf. Kraftvoll, nur mit guter Technik.
-k-frontflip|Front Flip (Kicker)|K|8|k-frontroll|Salto nach vorn vom Kicker.
+k-raley|Kicker Raley|K|8|k-straight-l|Beine nach hinten oben strecken, Körper waagerecht, Board über Kopfhöhe. Kraftvoll, nur mit guter Technik.
+k-krypt|Kicker Krypt|K|8|k-raley,k-fs180-l|Raley mit Frontside-180, Landung switch.
+k-911|Kicker 911|K|8|k-raley,k-fs-shifty|Raley mit Shifty: Board im gestreckten Raley kurz querdrehen.
+k-halfcab|Half Cab Roll (Kicker)|K|8|k-rtr|Aus Switch: Heelside Backroll mit Frontside-180, Landung wieder regular.
+k-elephant|Elephant (Kicker)|K|8|k-scarecrow|Scarecrow to Fakie: Frontroll mit Frontside-180 und Rewind.
 r-transfer|Transfer zwischen Obstacles|R|8|r-ollie-on|Von einem Obstacle aufs nächste springen.
-air-raley|Air Raley|A|8|loaded-ollie|Raley aus der Kante: Körper strecken, Board hinten hoch, Handle fest an der Hüfte.
+air-raley|Air Raley|A|8|loaded-ollie|Raley aus der Kante: Beine nach hinten oben strecken, Board hinten hoch, Handle fest an der Hüfte.
+air-krypt|Air Krypt|A|8|air-raley,surf-fs180|Raley mit Frontside-180, Landung switch.
 raley-start|Raley Start|S|8|jump-start,air-raley|Vom Steg direkt in einen Raley starten.
-air-krypt|Krypt|A|8|air-raley,surf-fs180|Raley mit frontside 180 zur Landung.
 r-fs540out|FS540 raus|R|9|r-fs270out,surf-360|1,5 Drehungen frontside vom Rail.
-air-frontroll|Air Front Roll|A|9|air-backroll,k-frontroll|Frontroll aus der Kante ohne Kicker.
-air-911|911|A|9|air-krypt|Raley mit Handlepass hinter dem Rücken.
-air-blindjudge|Blind Judge|A|9|air-frontroll|Frontroll mit Blind-Landung.
-air-313|313|A|10|air-raley,ollie-bs180|Raley mit Handlepass-Drehung (Tantrum to blind).
-air-mobe|Mobe|A|10|air-backroll,air-frontroll|Doppelter Flip mit Handlepass.
-air-sbend|S-Bend|A|10|air-raley,air-backroll|Invertierter Raley mit Rolle.
-air-kgb|KGB|A|10|air-911|Kombination aus Raley, Handlepass und Rotation.
-k-mobe|Mobe (Kicker)|K|10|k-backroll,k-bs360|Mobe vom Kicker.
+k-sbend|Kicker S-Bend|K|9|k-raley,k-bs180|Raley mit Backside-360 als Ole: Handle über den Kopf heben statt übergeben.
+k-blindjudge|Kicker Blind Judge|K|9|k-raley,k-bs180|Raley mit Backside-180, Landung blind.
+k-313|Kicker 313|K|9|k-raley,k-bs360|Raley mit Handlepass und Frontside-360.
+k-whirly|Whirlybird (Kicker)|K|9|k-tantrum,k-bs180|Tantrum mit Backside-360 als Ole, Handle mit der vorderen Hand über den Kopf führen.
+k-glide|Hoochie Glide (Kicker)|K|9|k-raley,k-adv-grab|Raley mit Method-Grab der vorderen Hand.
+k-mobe|Back Mobe (Kicker)|K|9|k-backroll,k-bs360|Heelside Backroll mit Handlepass und Frontside-360.
+air-frontroll|Air Frontroll|A|9|air-backroll,k-frontroll|Frontroll aus der Toeside-Kante ohne Kicker.
+air-frontflip|Air Front Flip|A|9|air-frontroll,k-frontflip|Salto nach vorn aus der Kante, Tail über den Kopf.
+air-911|Air 911|A|9|air-raley|Air Raley mit Shifty: Board im gestreckten Raley querdrehen und zurück.
+air-blindjudge|Air Blind Judge|A|9|air-raley,blind-ride|Air Raley mit Backside-180, Landung blind (Handle hinter dem Rücken).
+air-sbend|Air S-Bend|A|9|air-raley,surf-bs180|Air Raley mit Backside-360 als Ole: Handle über den Kopf statt übergeben.
+air-vulcan|Air Vulcan (S-Bend to Fakie)|A|9|air-sbend,surf-fs180|S-Bend mit zusätzlichem Frontside-180, Landung fakie.
+air-kgb|Air KGB|A|9|air-backroll,surf-bs180|Heelside Air Backroll mit Backside-360 als Ole.
+air-313|Air 313|A|9|air-raley,surf-360|Air Raley mit Handlepass und Frontside-360 (Raley-Mobe).
+air-backmobe|Air Back Mobe|A|9|air-backroll,surf-360|Heelside Air Backroll mit Handlepass und Frontside-360.
+air-belair|Bel Air (Air Tantrum)|A|9|air-backroll,k-tantrum|Whip-Trick: Rückwärtssalto aus der Heelside-Kante ohne Kicker. Zug voll laden, Schultern nicht aufdrehen.
+air-belair180|Bel Air FS180|A|9|air-belair,surf-fs180|Bel Air mit Frontside-180, Landung switch.
+air-benair|Ben Air|A|9|air-belair|Whip-Variante neben dem Bel Air (Wakebook Level 9). Technik vorab mit Coach oder Video klären.
+air-belairmobe|Bel Air Mobe (Air Moby Dick)|A|10|air-belair,air-backmobe|Air Tantrum mit Handlepass und Backside-360.
+air-tsraley|Toeside Raley|A|10|air-raley,toeside|Raley aus der Toeside-Kante.
+air-tsmobe|Toeside Mobe (z. B. Crow Mobe)|A|10|air-frontroll,surf-360|Toeside Frontroll mit Frontside-360.
+air-sbendblind|S-Bend to Blind|A|10|air-sbend,air-blindjudge|S-Bend mit zusätzlichem Backside-180, Landung blind.
+air-540mobe|540 Raley Mobe|A|10|air-313|Raley-Mobe mit 1,5 Umdrehungen.
+air-doubleroll|Double Roll|A|10|air-backroll,air-kgb|Zwei Backrolls in einem Sprung. Nur mit sehr viel Pop und Coaching.
 `;
 const TRICKS = T_RAW.trim().split('\n').map(l => { const f = l.split('|'); return {id:f[0], name:f[1], a:f[2], lvl:+f[3], pre:f[4] ? f[4].split(',') : [], tip:f[5]}; });
 const TR = {}; TRICKS.forEach(t => { TR[t.id] = t; });
+/* Switch nach Wakebook-Logik: Switch-Grundlagen (Starts, Kurve, Runde) gehören zu Level 3, jeder Switch-Trick
+   liegt sonst im Level des Grundtricks. Ein Level ist mit der starken Seite geöffnet und mit Switch abgeschlossen. */
+function swl(t) { return Math.max(t.lvl, 3); }
+/* Switch-Voraussetzung: Trick regular gestanden und alle Voraussetzungen auch in Switch gestanden */
+function preOkW(t) { return tSt(t.id, 's') >= 2 && t.pre.every(id => tSt(id, 'w') >= 2); }
 
+/* Alte Trick-IDs übernehmen: frühere eigene Switch-Tricks werden zur Switch-Spur, der allgemeine „Mobe“ zum Air Back Mobe */
+function migrateTricks(p) {
+  const t = p.tricks; if (!t) return;
+  const mv = (from, to, k) => { const o = t[from]; if (!o) return; const st = o.s || 0; t[to] = t[to] || {}; if (st > (t[to][k] || 0)) { t[to][k] = st; if (st >= 2) t[to][k === 's' ? 'first' : 'fw'] = t[to][k === 's' ? 'first' : 'fw'] || o.first || o.ts || null; } delete t[from]; };
+  mv('sw-dock-sit', 'dock-sit', 'w'); mv('sw-dock-stand', 'dock-stand', 'w'); mv('sw-corner', 'first-corner', 'w'); mv('sw-round', 'full-round', 'w'); mv('air-mobe', 'air-backmobe', 's');
+}
 /* Status einer Stance (k = 's' Regular, 'w' Switch) */
 function tSt(id, k) { const o = S.p.tricks && S.p.tricks[id]; return (o && o[k || 's']) || 0; }
 function tStat(id) { return tSt(id, 's'); } /* Regular, für bestehende Aufrufe */
 function tPoints(t, s) { return s >= 3 ? t.lvl * 10 : s === 2 ? t.lvl * 5 : 0; }
 /* höchstes Level L, bei dem mindestens 70 % aller Tricks bis L in dieser Stance gestanden sind */
 function levelOf(k) {
+  const lv = k === 'w' ? swl : (t => t.lvl);
   let lvl = 0;
-  for (let L = 1; L <= 10; L++) { const up = TRICKS.filter(t => t.lvl <= L); if (up.filter(t => tSt(t.id, k) >= 2).length / up.length >= 0.7) lvl = L; else break; }
+  for (let L = 1; L <= 10; L++) { const up = TRICKS.filter(t => lv(t) <= L); if (!up.length || up.filter(t => tSt(t.id, k) >= 2).length / up.length >= 0.7) lvl = L; else break; }
   return lvl;
 }
 function riderStats() {
@@ -99,9 +140,9 @@ function riderStats() {
     if (s >= 2) landed++; if (s >= 3) solid++; if (w >= 2) swLanded++;
     if (s >= 2 && w >= 2) both++;
   });
-  const lvl = levelOf('s'), swlvl = levelOf('w');
+  const lvl = levelOf('s'), swlvl = levelOf('w'), closed = Math.min(lvl, swlvl);
   const nx = TRICKS.filter(t => t.lvl <= lvl + 1), need = lvl < 10 ? Math.max(0, Math.ceil(nx.length * 0.7) - nx.filter(t => tSt(t.id, 's') >= 2).length) : 0;
-  return {xp, landed, solid, swLanded, both, lvl, swlvl, need};
+  return {xp, landed, solid, swLanded, both, lvl, swlvl, closed, need};
 }
 /* Voraussetzungen gelten über die Regular-Spur */
 function preOk(t) { return t.pre.every(id => tSt(id, 's') >= 2); }
@@ -110,15 +151,17 @@ function nextTricks(n) {
   const r = riderStats();
   const reg = TRICKS.filter(t => tSt(t.id, 's') < 3 && preOk(t) && t.lvl <= r.lvl + 2)
     .filter(t => tSt(t.id, 's') !== 2 || t.lvl <= r.lvl).map(t => ({t, k:'s'}));
-  const sw = TRICKS.filter(t => tSt(t.id, 's') >= 2 && tSt(t.id, 'w') < 2 && t.lvl <= r.lvl).map(t => ({t, k:'w'}));
+  /* Switch: Voraussetzungen erfüllt, höchstens ein Level über dem geöffneten, zuerst was offene Level abschließt */
+  const sw = TRICKS.filter(t => tSt(t.id, 'w') < 3 && preOkW(t) && swl(t) <= r.lvl + 1)
+    .filter(t => tSt(t.id, 'w') !== 2 || swl(t) <= r.lvl).map(t => ({t, k:'w'}));
   const ord = it => { const s = tSt(it.t.id, it.k); return s === 1 ? 0 : s === 0 ? 1 : 2; };
-  const by = (a, b) => ord(a) - ord(b) || a.t.lvl - b.t.lvl;
+  const by = (a, b) => ord(a) - ord(b) || (a.k === 'w' ? swl(a.t) - swl(b.t) : a.t.lvl - b.t.lvl);
   reg.sort(by); sw.sort(by);
   /* bis zu 2 Plätze für Switch reservieren, damit beidseitiges Fahren nicht untergeht */
   n = n || 6; const ns = Math.min(sw.length, 2), out = reg.slice(0, n - ns).concat(sw.slice(0, ns));
   return out.concat(reg.slice(n - ns), sw.slice(ns)).slice(0, n);
 }
-function stPill(id, k) { const s = tSt(id, k); return '<button class="tst2 s' + s + '" data-act="tr-cycle" data-v="' + id + ':' + k + '" aria-label="' + STANCE[k] + ' ' + T_STAT[s][0] + '"><em>' + (k === 's' ? 'Reg' : 'Sw') + '</em>' + T_SHORT[s] + '</button>'; }
+function stPill(id, k) { const s = tSt(id, k), lk = k === 'w' && !s && !preOkW(TR[id]); return '<button class="tst2 s' + s + (lk ? ' lk' : '') + '" data-act="tr-cycle" data-v="' + id + ':' + k + '" aria-label="' + STANCE[k] + ' ' + T_STAT[s][0] + '"><em>' + (k === 's' ? 'Reg' : 'Sw') + '</em>' + T_SHORT[s] + '</button>'; }
 function trickRow(t) {
   const ar = T_AREAS[t.a], ok = preOk(t), s = tSt(t.id, 's');
   return '<div class="trow"><span class="av" style="--c:' + ar[1] + '">' + t.lvl + '</span><button class="exm" data-act="tr-open" data-v="' + t.id + '"><b>' + esc(t.name) + '</b><small>' + ar[0] + ' · Level ' + t.lvl + (ok || s ? '' : ' · Voraussetzung fehlt') + '</small></button>' +
@@ -127,7 +170,7 @@ function trickRow(t) {
 /* Zeile in „Als Nächstes“: genau die empfohlene Stance */
 function nextRow(it) {
   const t = it.t, k = it.k, s = tSt(t.id, k), ar = T_AREAS[t.a];
-  return '<div class="trow"><span class="av" style="--c:' + ar[1] + '">' + t.lvl + '</span><button class="exm" data-act="tr-open" data-v="' + t.id + '"><b>' + esc(t.name) + (k === 'w' ? ' <span class="swtag">Switch</span>' : '') + '</b><small>' + ar[0] + ' · Level ' + t.lvl + '</small></button>' +
+  return '<div class="trow"><span class="av" style="--c:' + ar[1] + '">' + t.lvl + '</span><button class="exm" data-act="tr-open" data-v="' + t.id + '"><b>' + esc(t.name) + (k === 'w' ? ' <span class="swtag">Switch</span>' : '') + '</b><small>' + ar[0] + ' · Level ' + (k === 'w' ? swl(t) : t.lvl) + (k === 'w' && swl(t) <= riderStats().lvl ? ' · schließt Level ab' : '') + '</small></button>' +
     '<button class="tst s' + s + '" data-act="tr-cycle" data-v="' + t.id + ':' + k + '">' + T_STAT[s][0] + '</button></div>';
 }
 function vWake() {
@@ -136,13 +179,14 @@ function vWake() {
   if (seg === 'grip') return h + vGrip();
   if (seg === 'ses') return h + vWakeSessions();
   const r = riderStats(), pct = r.lvl >= 10 ? 100 : Math.round((1 - r.need / Math.max(1, Math.ceil(TRICKS.filter(t => t.lvl <= r.lvl + 1).length * 0.7))) * 100);
-  h += '<div class="card rider"><div class="row"><div><small class="sub">Rider-Level</small><div class="rl"><b>' + r.lvl + '</b><small>/ 10</small></div><small class="sub" style="display:block;margin-top:-2px">Switch-Level ' + r.swlvl + '</small></div>' +
-    '<div class="stats" style="margin:0;flex:1;max-width:260px"><div><small>Punkte</small><b>' + r.xp + '</b></div><div><small>Beidseitig</small><b>' + r.both + '</b></div><div><small>Switch</small><b>' + r.swLanded + '</b></div></div></div>' +
-    (r.lvl < 10 ? '<div class="meter" style="margin-top:12px"><span style="width:' + pct + '%"></span></div><p class="hint" style="margin-top:6px">Noch ' + r.need + ' Trick' + (r.need === 1 ? '' : 's') + ' bis Level ' + (r.lvl + 1) + ' (70 % aller Tricks bis Level ' + (r.lvl + 1) + ' gestanden). Jede Stance zählt eigene Punkte: Gestanden Level × 5, Sitzt Level × 10.</p>' : '') + '</div>';
+  h += '<div class="card rider"><div class="row"><div><small class="sub">Rider-Level</small><div class="rl"><b>' + r.lvl + '</b><small>/ 10</small></div><small class="sub" style="display:block;margin-top:-2px">Abgeschlossen: ' + (r.closed ? 'Level ' + r.closed : '–') + '</small></div>' +
+    '<div class="stats" style="margin:0;flex:1;max-width:260px"><div><small>Punkte</small><b>' + r.xp + '</b></div><div><small>Beide</small><b>' + r.both + '</b></div><div><small>Switch</small><b>' + r.swLanded + '</b></div></div></div>' +
+    (r.lvl < 10 ? '<div class="meter" style="margin-top:12px"><span style="width:' + pct + '%"></span></div><p class="hint" style="margin-top:6px">Noch ' + r.need + ' Trick' + (r.need === 1 ? '' : 's') + ' bis Level ' + (r.lvl + 1) + ' (70 % aller Tricks bis Level ' + (r.lvl + 1) + ' gestanden). Geöffnet ist ein Level mit der starken Seite, abgeschlossen erst, wenn auch Switch steht (wie im Wakebook). Jede Stance zählt eigene Punkte: Gestanden Level × 5, Sitzt Level × 10.</p>' : '') + '</div>';
   const nx = nextTricks(6);
   h += '<h2 class="sec">Als Nächstes</h2><div class="list">' + (nx.length ? nx.map(nextRow).join('') : '<div class="empty">Alles erledigt, was gerade freigeschaltet ist.</div>') + '</div>';
   /* Level-Übersicht (Regular) */
-  h += '<h2 class="sec">Fortschritt je Level</h2><div class="lvls">' + Array.from({length:10}, (_, i) => { const L = i + 1, ts = TRICKS.filter(t => t.lvl === L), d = ts.filter(t => tSt(t.id, 's') >= 2).length; return '<button class="lvl' + (S.ui.tl === L ? ' on' : '') + '" data-act="tr-lvl" data-v="' + L + '"><small>L' + L + '</small><i><em style="height:' + Math.round(d / ts.length * 100) + '%"></em></i><small class="num">' + d + '/' + ts.length + '</small></button>'; }).join('') + '</div>';
+  h += '<h2 class="sec">Fortschritt je Level</h2><div class="lvls">' + Array.from({length:10}, (_, i) => { const L = i + 1, ts = TRICKS.filter(t => t.lvl === L), d = ts.filter(t => tSt(t.id, 's') >= 2).length, tw = TRICKS.filter(t => swl(t) === L), dw = tw.filter(t => tSt(t.id, 'w') >= 2).length;
+    return '<button class="lvl' + (S.ui.tl === L ? ' on' : '') + (r.closed >= L ? ' done' : '') + '" data-act="tr-lvl" data-v="' + L + '" aria-label="Level ' + L + ': Regular ' + d + ' von ' + ts.length + ', Switch ' + dw + ' von ' + tw.length + '"><small>L' + L + '</small><span class="bars"><i><em style="height:' + Math.round(d / ts.length * 100) + '%"></em></i><i class="w"><em style="height:' + (tw.length ? Math.round(dw / tw.length * 100) : 0) + '%"></em></i></span><small class="num">' + d + '/' + ts.length + '</small></button>'; }).join('') + '</div><p class="hint" style="margin-top:6px">Linker Balken Regular, rechter Switch. Abgeschlossene Level sind markiert.</p>';
   if (S.ui.tl === undefined) S.ui.tl = Math.min(10, r.lvl + 1);
   const af = S.ui.ta || '', lf = S.ui.tl || 0;
   h += '<div class="row" style="margin-top:10px"><span class="sub">' + (lf ? 'Level ' + lf + ' (anderes Level oben antippen)' : 'Alle Level') + '</span>' + (lf ? '<button class="link" data-act="tr-lvl" data-v="0">Alle Level zeigen</button>' : '') + '</div>';
@@ -150,7 +194,7 @@ function vWake() {
   const list = TRICKS.filter(t => (!af || t.a === af) && (!lf || t.lvl === lf));
   let cur = 0, out = '';
   list.forEach(t => { if (t.lvl !== cur) { if (cur) out += '</div>'; out += '<h2 class="sec">Level ' + t.lvl + '</h2><div class="list">'; cur = t.lvl; } out += trickRow(t); });
-  h += (out ? out + '</div>' : '<div class="empty">Keine Tricks in dieser Auswahl.</div>') + '<p class="hint" style="margin-top:14px">Jeder Trick hat zwei Spuren: <b>Reg</b> (Regular) und <b>Sw</b> (Switch). Tippen schaltet weiter (Offen → Übe → Steht → Sitzt). Tippe den Namen für Tipp, Voraussetzungen und Videos. Trick-Struktur angelehnt an das Wakebook von wakeboard-progress.com.</p>';
+  h += (out ? out + '</div>' : '<div class="empty">Keine Tricks in dieser Auswahl.</div>') + '<p class="hint" style="margin-top:14px">Jeder Trick hat zwei Spuren: <b>Reg</b> (Regular) und <b>Sw</b> (Switch). Tippen schaltet weiter (Offen → Übe → Steht → Sitzt). Ein blasser Sw-Knopf heißt: erst den Trick regular stehen und die Voraussetzungen auch in Switch. Tippe den Namen für Tipp, Voraussetzungen und Videos. Trick-Struktur angelehnt an das Wakebook von wakeboard-progress.com.</p>';
   return h;
 }
 function trickSheet(id) {
@@ -186,7 +230,8 @@ function vWakeSessions() {
   const f = S.ui.wf2 || (S.ui.wf2 = {date:todayStr(), spot:W_SPOTS[0], min:'', laps:'', sel:{}, note:'', st:'s'});
   if (!f.st) f.st = 's';
   const k = f.st;
-  const cand = TRICKS.filter(t => tSt(t.id, k) === 1 || nextTricks(14).some(x => x.t === t) || (f.sel[t.id] && f.sel[t.id][k] !== undefined));
+  const nx = nextTricks(30);
+  const cand = TRICKS.filter(t => tSt(t.id, k) === 1 || nx.some(x => x.t === t && x.k === k) || (f.sel[t.id] && f.sel[t.id][k] !== undefined)).slice(0, 16);
   let h = '<div class="card"><h2>Session eintragen</h2><div class="pair"><div><label class="lab" for="ws-date">Datum</label><input type="date" id="ws-date" data-in="ws" data-f="date" value="' + esc(f.date) + '"></div>' +
     '<div><label class="lab" for="ws-spot">Ort</label><select id="ws-spot" data-in="ws" data-f="spot">' + W_SPOTS.map(x => '<option' + (x === f.spot ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></div>' +
     '<div><label class="lab" for="ws-min">Fahrzeit (min)</label><input type="text" inputmode="numeric" id="ws-min" data-in="ws" data-f="min" value="' + esc(f.min) + '" placeholder="z. B. 60"></div>' +

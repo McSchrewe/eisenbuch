@@ -214,25 +214,25 @@ function exCount(min) { return Math.max(3, Math.min(8, Math.round(min / 12.5)));
 const MODELS = {
   linear:{
     name:'Linear (Einsteiger)', weeks:6, tag:'Empfohlen für den Start',
-    desc:'Die Last steigt von Woche zu Woche, die Wiederholungen sinken. Einfach zu verstehen und gut für Einsteiger. Die letzte Woche ist eine Entlastungswoche (Deload).',
+    desc:'Die Last steigt von Woche zu Woche, die Wiederholungen sinken. Einfach zu verstehen und gut für Einsteiger. Die letzte Woche ist eine Entlastungswoche: halbes Volumen bei 70 % statt Pause, so bleibt die Kraft erhalten.',
     wk:[
       {l:'Aufbau',pct:0.70,reps:10,sets:4},
       {l:'Aufbau',pct:0.75,reps:8,sets:4},
       {l:'Kraft',pct:0.80,reps:6,sets:3},
       {l:'Kraft',pct:0.825,reps:5,sets:3},
       {l:'Peak',pct:0.85,reps:4,sets:3},
-      {l:'Deload',pct:0.60,reps:5,sets:2,deload:true}
+      {l:'Deload',pct:0.70,reps:5,sets:2,deload:true}
     ]
   },
   dup:{
     name:'Wellenförmig (täglich variierend)', weeks:5, tag:'Für später, wenn Linear stockt',
-    desc:'Jede Einheit der Woche hat einen anderen Schwerpunkt: schwer, Volumen oder mittel. Von Woche zu Woche steigt alles leicht an. Die letzte Woche ist ein Deload.',
+    desc:'Jede Einheit der Woche hat einen anderen Schwerpunkt: schwer, Volumen oder mittel. Von Woche zu Woche steigt alles leicht an. Die letzte Woche ist ein Deload mit halbem Volumen bei 70 %.',
     wk:[
       {heavy:{pct:0.80,reps:5,sets:4}, vol:{pct:0.675,reps:10,sets:3}, mid:{pct:0.725,reps:8,sets:3}},
       {heavy:{pct:0.825,reps:5,sets:4}, vol:{pct:0.70,reps:10,sets:3}, mid:{pct:0.75,reps:8,sets:3}},
       {heavy:{pct:0.85,reps:4,sets:4}, vol:{pct:0.725,reps:10,sets:3}, mid:{pct:0.775,reps:7,sets:3}},
       {heavy:{pct:0.875,reps:3,sets:4}, vol:{pct:0.75,reps:9,sets:3}, mid:{pct:0.80,reps:6,sets:3}},
-      {deload:true,l:'Deload',pct:0.60,reps:5,sets:2}
+      {deload:true,l:'Deload',pct:0.70,reps:5,sets:2}
     ]
   }
 };
@@ -303,8 +303,11 @@ function fmtSet(e, s) {
   if (e.eq === 'KG') return (s.kg > 0 ? '+' + fmt(s.kg) + ' kg × ' : '') + s.reps + ' Wdh.';
   return fmt(s.kg || 0) + ' kg × ' + s.reps + ' Wdh.';
 }
-/* Reserve-Bonus nur bei 'leicht' (ca. 2 Wdh. Reserve); verhindert, dass normale Sätze das 1RM künstlich anheben */
-function bonusOf(feel) { return feel === 'easy' ? 2 : 0; }
+/* RIR-basierte Autoregulation: geschätzte Wiederholungen in Reserve je Gefühl.
+   Leicht ≈ 3, Passend ≈ 1,5, Schwer/Limit = 0. Die Plan-Sätze liegen bei ca. 2 RIR, ein „passender“
+   Satz mit Plangewicht bestätigt also das 1RM (Schätzung ≤ +1 %), erst echte Mehrleistung hebt es an. */
+const RIR = {easy:3, ok:1.5, hard:0};
+function bonusOf(feel) { return RIR[feel] !== undefined ? RIR[feel] : 1.5; }
 function sessionE1(e, x) {
   const b = bonusOf(x.feel); let best = 0;
   for (const s of workSets(x)) {
@@ -430,23 +433,31 @@ function entryMiss(x) {
   return ws.length < pl.sets - 1 || low >= Math.ceil(ws.length / 2);
 }
 function applyProgress(p, sess) {
-  const changes = [];
+  const changes = []; p.low = p.low || {};
   sess.exercises.forEach(x => {
-    const e = EX[x.exId]; if (!e || !e.c || e.eq === 'KG') return;
+    const e = EX[x.exId], id = x.exId; if (!e || !e.c || e.eq === 'KG') return;
     if (!workSets(x).length) return;
-    const s1 = sessionE1(e, x), cur = e1Of(p, x.exId); let raised = false;
+    const cur = e1Of(p, id); let s1 = sessionE1(e, x), changed = false;
+    /* Relativ zum Plan bewerten: genau Plan bei „passend“ = 1RM bestätigt (Rundung der Scheiben zählt nicht als Mehrleistung) */
+    const pl = x.plan;
+    if (s1 && cur && pl && pl.mode === 'pct' && pl.kg > 0 && pl.reps > 0) s1 = cur * s1 / EPLEY(pl.kg, pl.reps + RIR.ok);
     if (s1) {
-      const hasOwn = p.e1 && p.e1[x.exId];
-      if (e.main && !hasOwn) { p.e1[x.exId] = roundHalf(s1); raised = true; changes.push({id:x.exId, from:null, to:p.e1[x.exId]}); }
-      else if (cur && s1 > cur * 1.01) { p.e1[x.exId] = roundHalf(s1); raised = true; changes.push({id:x.exId, from:cur, to:p.e1[x.exId]}); }
+      const hasOwn = p.e1 && p.e1[id];
+      if (e.main && !hasOwn) { p.e1[id] = roundHalf(s1); changed = true; changes.push({id, from:null, to:p.e1[id]}); }
+      else if (cur && s1 > cur * 1.3) changes.push({id, from:cur, to:cur, odd:true, est:roundHalf(s1)}); /* Tippfehler-Verdacht: nicht übernehmen */
+      else if (cur && s1 > cur * 1.01) { const to = roundHalf(Math.min(s1, cur * 1.1)); p.e1[id] = to; changed = true; p.low[id] = 0; changes.push({id, from:cur, to}); } /* max. +10 % pro Einheit */
+      else if (cur && x.plan && x.plan.mode === 'pct' && s1 < cur * 0.93 && (x.feel === 'hard' || entryMiss(x))) {
+        p.low[id] = (p.low[id] || 0) + 1;
+        if (p.low[id] >= 2) { const to = roundHalf(Math.max(cur * 0.9, (cur + s1) / 2)); p.e1[id] = to; changed = true; p.low[id] = 0; changes.push({id, from:cur, to, down:true}); } /* erst nach 2 schwachen Einheiten in Folge senken */
+      } else if (cur) p.low[id] = 0;
     }
     if (x.plan && x.plan.mode === 'pct') {
-      let a = (p.adj && p.adj[x.exId]) || 0; const inc = e.inc;
+      let a = (p.adj && p.adj[id]) || 0; const inc = e.inc;
       if (x.feel === 'hard' || entryMiss(x)) a -= inc;
-      else if (!raised && x.feel === 'easy' && entryHit(x)) a += inc;
+      else if (!changed && x.feel === 'easy' && entryHit(x)) a += inc;
       a = Math.max(-4 * inc, Math.min(4 * inc, a));
-      if (raised) a = 0;
-      p.adj[x.exId] = a;
+      if (changed) a = 0;
+      p.adj[id] = a;
     }
   });
   return changes;

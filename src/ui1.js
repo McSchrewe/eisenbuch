@@ -10,6 +10,7 @@ function normProfile(p) {
   const d = defaultProfile();
   p = Object.assign(d, p || {});
   ['e1','src','adj','swaps','gripGoal','exNotes'].forEach(k => { if (!p[k] || typeof p[k] !== 'object') p[k] = {}; });
+  if (typeof migrateTricks === 'function') migrateTricks(p);
   if (!Array.isArray(p.tomb)) p.tomb = [];
   if (!Array.isArray(p.custom)) p.custom = [];
   if (!p.remind || typeof p.remind !== 'object') p.remind = {on:false, lead:30};

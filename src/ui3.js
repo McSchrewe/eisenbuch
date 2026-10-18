@@ -101,14 +101,17 @@ function sheetHTML() {
     const s = sh.sess, ws = s.exercises.reduce((a, x) => a + workSets(x).length, 0);
     let h = '<p class="eyebrow">Gespeichert</p><h2>' + esc(s.name) + '</h2><div class="stats"><div><small>Dauer</small><b>' + fmtDur(s.dur) + '</b></div><div><small>Arbeitssätze</small><b>' + ws + '</b></div><div><small>Volumen</small><b>' + volT(sessionVolume(s)) + '</b></div></div>';
     if (sh.prs.length) h += '<h3 style="margin-top:14px">Neue Bestwerte</h3><p class="hint">Bei Gewichtsübungen gemessen am geschätzten 1RM.</p>' + sh.prs.map(x => '<div class="exrow"><span>' + esc(EX[x.id].name) + '</span><span class="r">' + fmt(x.v) + ' ' + x.unit + ' <span class="delta">' + (x.prev ? '+' + fmt(Math.round((x.v - x.prev) * 10) / 10) : '') + '</span></span></div>').join('');
-    if (sh.ch.length) h += '<h3 style="margin-top:14px">1RM angepasst</h3>' + sh.ch.map(c => '<div class="exrow"><span>' + esc(EX[c.id].name) + '</span><span class="r">' + (c.from ? fkg(c.from) + ' → ' : '') + fkg(c.to) + '</span></div>').join('');
-    if (!sh.prs.length && !sh.ch.length) h += '<p style="margin-top:12px">Sauber durchgezogen. Die nächsten Gewichte sind schon berechnet.</p>';
+    const real = sh.ch.filter(c => !c.odd), odd = sh.ch.filter(c => c.odd);
+    if (real.length) h += '<h3 style="margin-top:14px">1RM angepasst</h3><p class="hint">Die Gewichte der folgenden Wochen sind neu berechnet.</p>' + real.map(c => '<div class="exrow"><span>' + esc(EX[c.id].name) + (c.down ? ' <small>(2× unter Plan)</small>' : '') + '</span><span class="r">' + (c.from ? fkg(c.from) + ' → ' : '') + fkg(c.to) + '</span></div>').join('');
+    if (odd.length) h += '<h3 style="margin-top:14px">Nicht übernommen</h3>' + odd.map(c => '<p class="hint">' + esc(EX[c.id].name) + ': Die Einheit ergibt ein 1RM von ca. ' + fkg(c.est) + ', mehr als 30 % über ' + fkg(c.from) + '. Tippfehler? Falls echt, unter Mehr → Periodisierung von Hand setzen.</p>').join('');
+    if (!sh.prs.length && !real.length && !odd.length) h += '<p style="margin-top:12px">Sauber durchgezogen. Die nächsten Gewichte sind schon berechnet.</p>';
     return h + '<button class="btn wide" style="margin-top:14px" data-act="close">Fertig</button>';
   }
   if (sh.t === 'block') {
     const res = sh.res;
     return '<h2>Block ' + p.block.no + ' ausgewertet</h2><p>Gesteigert wird, wenn du in mindestens 75 % der Einheiten alle Wiederholungen geschafft hast.</p>' +
       (res.length ? res.map(r => '<div class="exrow"><span>' + esc(EX[r.id].name) + (r.ok ? '' : '<br><small>Ziel nicht ganz erreicht, Wert bleibt</small>') + '</span><span class="r">' + fkg(r.start) + ' → ' + fkg(r.to) + ' ' + deltaHTML(pctDelta(r.to, r.start)) + '</span></div>').join('') : '<div class="empty">Keine Grundübungen mit Prozentvorgabe im Block.</div>') +
+      (p.model === 'linear' && p.block.no >= 2 ? '<p class="hint" style="margin-top:10px">Tipp: Du hast ' + p.block.no + ' lineare Blöcke hinter dir. Bei Trainierten bringt das wellenförmige Modell im Schnitt etwas mehr Maximalkraft (Moesgaard 2022). Umstellen kannst du unter Mehr → Periodisierung.</p>' : '') +
       '<button class="btn wide" style="margin-top:14px" data-act="block-next">Block ' + (p.block.no + 1) + ' starten</button>' + close;
   }
   if (sh.t === 'plates') {
