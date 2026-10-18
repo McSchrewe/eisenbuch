@@ -124,7 +124,7 @@ function migrateTricks(p) {
 /* Status einer Stance (k = 's' Regular, 'w' Switch) */
 function tSt(id, k) { const o = S.p.tricks && S.p.tricks[id]; return (o && o[k || 's']) || 0; }
 function tStat(id) { return tSt(id, 's'); } /* Regular, für bestehende Aufrufe */
-function tPoints(t, s) { return s >= 3 ? t.lvl * 10 : s === 2 ? t.lvl * 5 : 0; }
+function tPoints(t, s) { return s >= 3 ? t.lvl * 2 : s === 2 ? t.lvl : 0; } /* gestanden = Level, sitzt = 2 × Level, je Stance */
 /* höchstes Level L, bei dem mindestens 70 % aller Tricks bis L in dieser Stance gestanden sind */
 function levelOf(k) {
   const lv = k === 'w' ? swl : (t => t.lvl);
@@ -179,14 +179,14 @@ function vWake() {
   if (seg === 'grip') return h + vGrip();
   if (seg === 'ses') return h + vWakeSessions();
   const r = riderStats(), pct = r.lvl >= 10 ? 100 : Math.round((1 - r.need / Math.max(1, Math.ceil(TRICKS.filter(t => t.lvl <= r.lvl + 1).length * 0.7))) * 100);
-  h += '<div class="card rider"><div class="row"><div><small class="sub">Rider-Level</small><div class="rl"><b>' + r.lvl + '</b><small>/ 10</small></div><small class="sub" style="display:block;margin-top:-2px">Abgeschlossen: ' + (r.closed ? 'Level ' + r.closed : '–') + '</small></div>' +
-    '<div class="stats" style="margin:0;flex:1;max-width:260px"><div><small>Punkte</small><b>' + r.xp + '</b></div><div><small>Beide</small><b>' + r.both + '</b></div><div><small>Switch</small><b>' + r.swLanded + '</b></div></div></div>' +
-    (r.lvl < 10 ? '<div class="meter" style="margin-top:12px"><span style="width:' + pct + '%"></span></div><p class="hint" style="margin-top:6px">Noch ' + r.need + ' Trick' + (r.need === 1 ? '' : 's') + ' bis Level ' + (r.lvl + 1) + ' (70 % aller Tricks bis Level ' + (r.lvl + 1) + ' gestanden). Geöffnet ist ein Level mit der starken Seite, abgeschlossen erst, wenn auch Switch steht (wie im Wakebook). Jede Stance zählt eigene Punkte: Gestanden Level × 5, Sitzt Level × 10.</p>' : '') + '</div>';
+  h += '<div class="card rider"><div class="row"><div><small class="sub">Rider-Level</small><div class="rl"><b>' + r.lvl + '</b><small>/ 10</small></div><small class="sub" style="display:block;margin-top:-2px">Abgeschlossen: ' + (r.closed ? 'Level ' + r.closed : '–') + '</small></div></div>' +
+    '<div class="stats" style="margin-top:12px"><div><small>Punkte</small><b>' + r.xp + '</b></div><div><small>Beidseitig</small><b>' + r.both + '</b></div><div><small>Switch</small><b>' + r.swLanded + '</b></div></div>' +
+    (r.lvl < 10 ? '<div class="meter" style="margin-top:12px"><span style="width:' + pct + '%"></span></div><p class="hint" style="margin-top:6px">Noch ' + r.need + ' Trick' + (r.need === 1 ? '' : 's') + ' bis Level ' + (r.lvl + 1) + ' (70 % aller Tricks bis Level ' + (r.lvl + 1) + ' gestanden). Geöffnet ist ein Level mit der starken Seite, abgeschlossen erst, wenn auch Switch steht (wie im Wakebook). Punkte je Stance: gestanden = Level, sitzt = 2 × Level.</p>' : '') + '</div>';
   const nx = nextTricks(6);
   h += '<h2 class="sec">Als Nächstes</h2><div class="list">' + (nx.length ? nx.map(nextRow).join('') : '<div class="empty">Alles erledigt, was gerade freigeschaltet ist.</div>') + '</div>';
   /* Level-Übersicht (Regular) */
-  h += '<h2 class="sec">Fortschritt je Level</h2><div class="lvls">' + Array.from({length:10}, (_, i) => { const L = i + 1, ts = TRICKS.filter(t => t.lvl === L), d = ts.filter(t => tSt(t.id, 's') >= 2).length, tw = TRICKS.filter(t => swl(t) === L), dw = tw.filter(t => tSt(t.id, 'w') >= 2).length;
-    return '<button class="lvl' + (S.ui.tl === L ? ' on' : '') + (r.closed >= L ? ' done' : '') + '" data-act="tr-lvl" data-v="' + L + '" aria-label="Level ' + L + ': Regular ' + d + ' von ' + ts.length + ', Switch ' + dw + ' von ' + tw.length + '"><small>L' + L + '</small><span class="bars"><i><em style="height:' + Math.round(d / ts.length * 100) + '%"></em></i><i class="w"><em style="height:' + (tw.length ? Math.round(dw / tw.length * 100) : 0) + '%"></em></i></span><small class="num">' + d + '/' + ts.length + '</small></button>'; }).join('') + '</div><p class="hint" style="margin-top:6px">Linker Balken Regular, rechter Switch. Abgeschlossene Level sind markiert.</p>';
+  h += '<h2 class="sec">Fortschritt je Level</h2><div class="lvls">' + Array.from({length:10}, (_, i) => { const L = i + 1, ts = TRICKS.filter(t => t.lvl === L), d = ts.filter(t => tSt(t.id, 's') >= 2).length, tw = ts, dw = ts.filter(t => tSt(t.id, 'w') >= 2).length; /* gleiche Tricks wie der Regular-Balken */
+    return '<button class="lvl' + (S.ui.tl === L ? ' on' : '') + (r.closed >= L ? ' done' : '') + '" data-act="tr-lvl" data-v="' + L + '" aria-label="Level ' + L + ': Regular ' + d + ' von ' + ts.length + ', Switch ' + dw + ' von ' + tw.length + '"><small>L' + L + '</small><span class="bars"><i><em style="height:' + Math.round(d / ts.length * 100) + '%"></em></i><i class="w"><em style="height:' + (tw.length ? Math.round(dw / tw.length * 100) : 0) + '%"></em></i></span><small class="num">' + d + '/' + ts.length + (dw ? '<br><span class="swn">Sw ' + dw + '</span>' : '') + '</small></button>'; }).join('') + '</div><p class="hint" style="margin-top:6px">Linker Balken Regular, rechter Switch. Abgeschlossene Level sind markiert.</p>';
   if (S.ui.tl === undefined) S.ui.tl = Math.min(10, r.lvl + 1);
   const af = S.ui.ta || '', lf = S.ui.tl || 0;
   h += '<div class="row" style="margin-top:10px"><span class="sub">' + (lf ? 'Level ' + lf + ' (anderes Level oben antippen)' : 'Alle Level') + '</span>' + (lf ? '<button class="link" data-act="tr-lvl" data-v="0">Alle Level zeigen</button>' : '') + '</div>';
