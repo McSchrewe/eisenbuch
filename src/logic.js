@@ -239,6 +239,17 @@ const MODELS = {
 const DUP_NAMES = {heavy:'Schwer', vol:'Volumen', mid:'Mittel'};
 const DUP_DAYS = {2:['heavy','vol'], 3:['heavy','vol','mid'], 4:['heavy','vol','mid','vol'], 5:['heavy','vol','mid','vol','mid'], 6:['heavy','vol','mid','heavy','vol','mid']};
 
+/* Einstiegsphase vor dem Block (nach Pause oder Neustart): Arbeitssätze 1 → 3, Last 60 → 70 % des 1RM,
+   Isolationsübungen 80 → 90 % des letzten Arbeitsgewichts. Zählt nicht zum Block. */
+const PREP = {1:[{pct:0.65, reps:8, sets:2, dp:0.85}], 2:[{pct:0.60, reps:8, sets:1, dp:0.8}, {pct:0.675, reps:8, sets:2, dp:0.875}],
+  3:[{pct:0.60, reps:8, sets:1, dp:0.8}, {pct:0.65, reps:8, sets:2, dp:0.85}, {pct:0.70, reps:8, sets:3, dp:0.9}]};
+function prepWeek(p) { const pp = p.prep; return pp && pp.on ? Math.min(pp.weeks - 1, Math.floor((pp.n || 0) / Math.max(1, p.days.length))) : -1; }
+function prepPr(p, one) {
+  const pp = p.prep, wk = prepWeek(p);
+  if (wk >= 0) return {week:0, dayIdx:0, label:'Einstieg ' + (wk + 1) + '/' + pp.weeks, ...PREP[pp.weeks][wk], prep:true, deload:false};
+  if (one) return {week:0, dayIdx:0, label:'Vorbereitung', ...PREP[1][0], prep:true, deload:false};
+  return null;
+}
 function blockSessions(p) { return p.days.length * MODELS[p.model].weeks; }
 function prescribe(p, n) {
   const d = p.days.length, M = MODELS[p.model], wi = Math.floor(n / d), di = n % d;
@@ -278,7 +289,7 @@ function defaultProfile() {
   return {v:2, done:false, split:'fullbody', days:[0,2,4], time:'18:00', minutes:60, model:'linear', bw:null,
     e1:{}, src:{}, adj:{}, swaps:{}, block:{n:0, no:1, e1Start:{}, started:todayStr()}, upd:0,
     wake:false, season:'2027-05-01', gripEvery:14, gripSet:['hang','towel','rep'], gripGoal:{}, height:null, tomb:[],
-    remind:{on:false, lead:30}, bwGoal:null, bwDate:null, custom:[], exNotes:{}};
+    remind:{on:false, lead:30}, prep:{on:false, weeks:3, n:0}, bwGoal:null, bwDate:null, custom:[], exNotes:{}};
 }
 function minKg(e) { return e.eq === 'LH' ? 20 : e.inc; }
 function e1Of(p, id) {
@@ -375,15 +386,15 @@ function exPlan(p, id, slot, pr, sessions) {
   const e = EX[id], inc = e.inc, last = lastSession(sessions, id);
   const lastTxt = last ? workSets(last.x).map(s => fmtSet(e, s)).join(' · ') : '';
   const base = {exId:id, slot, inc, lastTxt};
-  const sets = pr.deload ? 2 : 3;
+  const sets = pr.prep ? Math.max(1, pr.sets) : pr.deload ? 2 : 3;
   if (e.t) {
     const prev = last ? Math.max(...workSets(last.x).map(s => s.reps)) : 0;
-    const tgt = pr.deload ? Math.max(15, Math.round(prev * 0.7) || 20) : Math.min(180, prev ? prev + 5 : 30);
+    const tgt = pr.deload || pr.prep ? Math.max(15, Math.round(prev * 0.7) || 20) : Math.min(180, prev ? prev + 5 : 30);
     const lkg = last && e.eq !== 'KG' ? Math.max(...workSets(last.x).map(s => s.kg || 0)) : 0;
     return {...base, mode:'time', sets, reps:tgt, kg:lkg || (e.eq === 'KG' ? 0 : null), desc:sets + ' Sätze × ' + tgt + ' s'};
   }
   if (e.eq === 'KG') {
-    const r = bwRange(e), s = dpSuggest(last, r[0], r[1], 2.5);
+    const r = bwRange(e), s = pr.prep ? {kg:0, reps:r[0]} : dpSuggest(last, r[0], r[1], 2.5);
     return {...base, mode:'bw', sets, reps:s.reps, kg:s.kg || 0, rng:r, desc:sets + ' Sätze × ' + r[0] + '–' + r[1] + ' Wdh.'};
   }
   const e1 = e.c ? e1Of(p, id) : null;
@@ -396,17 +407,18 @@ function exPlan(p, id, slot, pr, sessions) {
   }
   const rng = e.main ? [8,10] : e.c ? [8,12] : [10,15];
   let s = dpSuggest(last, rng[0], rng[1], inc);
-  if (pr.deload && last) { const top = Math.max(...workSets(last.x).map(q => q.kg || 0)); s = {kg:Math.max(0, roundTo(top * 0.8, inc)), reps:rng[0]}; } /* Deload: keine Steigerung, ca. 80 % */
+  if (pr.prep && last) { const top = Math.max(...workSets(last.x).map(q => q.kg || 0)); s = {kg:Math.max(0, roundTo(top * pr.dp, inc)), reps:rng[0]}; } /* Einstieg: unter dem letzten Arbeitsgewicht */
+  else if (pr.deload && last) { const top = Math.max(...workSets(last.x).map(q => q.kg || 0)); s = {kg:Math.max(0, roundTo(top * 0.8, inc)), reps:rng[0]}; } /* Deload: keine Steigerung, ca. 80 % */
   return {...base, mode:'dp', sets, reps:s.reps, kg:s.kg, rng, first:!last,
     desc:sets + ' Sätze × ' + rng[0] + '–' + rng[1] + ' Wdh.'};
 }
 function templateIds(p, tid) { return TPL[tid].ex.map((id, i) => (p.swaps && p.swaps[tid + ':' + i]) || id); }
 /* Ein Training aus einem Plan bauen. Ohne planId wählt die App automatisch (siehe nextPlan). */
-function buildWorkout(p, sessions, n, planId) {
-  let pr = prescribe(p, n); if (!pr) return null;
+function buildWorkout(p, sessions, n, planId, opt) {
+  let pr = prepPr(p, opt && opt.prep) || prescribe(p, n); if (!pr) return null;
   /* Wiedereinstieg: nach mindestens 14 Tagen Pause einmalig 10 % leichter */
   const lastS = sessions.length ? sessions[sessions.length - 1] : null;
-  if (lastS && !pr.deload && (parseD(todayStr()) - parseD(lastS.date)) / 864e5 >= 14) pr = {...pr, pct:Math.round(pr.pct * 0.9 * 1000) / 1000, label:pr.label + ' · Wiedereinstieg', re:true};
+  if (lastS && !pr.deload && !pr.prep && (parseD(todayStr()) - parseD(lastS.date)) / 864e5 >= 14) pr = {...pr, pct:Math.round(pr.pct * 0.9 * 1000) / 1000, label:pr.label + ' · Wiedereinstieg', re:true};
   ensurePrograms(p);
   const plan = (planId && findPlan(p, planId)) || (nextPlan(p, sessions) || {}).plan;
   if (!plan) return {planId:null, tplId:null, name:'Freies Training', pr, items:[], est:5};
@@ -437,14 +449,15 @@ function applyProgress(p, sess) {
   sess.exercises.forEach(x => {
     const e = EX[x.exId], id = x.exId; if (!e || !e.c || e.eq === 'KG') return;
     if (!workSets(x).length) return;
-    const cur = e1Of(p, id); let s1 = sessionE1(e, x), changed = false;
-    /* Relativ zum Plan bewerten: genau Plan bei „passend“ = 1RM bestätigt (Rundung der Scheiben zählt nicht als Mehrleistung) */
+    const cur = e1Of(p, id), raw = sessionE1(e, x); let s1 = raw, changed = false;
+    /* Relativ zum Plan bewerten: genau Plan bei „passend“ = 1RM bestätigt (Rundung der Scheiben zählt nicht als Mehrleistung).
+       Einstiegseinheiten sind absichtlich leicht: dort zählt nur die tatsächliche Leistung. */
     const pl = x.plan;
-    if (s1 && cur && pl && pl.mode === 'pct' && pl.kg > 0 && pl.reps > 0) s1 = cur * s1 / EPLEY(pl.kg, pl.reps + RIR.ok);
+    if (s1 && cur && !sess.prep && pl && pl.mode === 'pct' && pl.kg > 0 && pl.reps > 0) s1 = cur * s1 / EPLEY(pl.kg, pl.reps + RIR.ok);
     if (s1) {
       const hasOwn = p.e1 && p.e1[id];
       if (e.main && !hasOwn) { p.e1[id] = roundHalf(s1); changed = true; changes.push({id, from:null, to:p.e1[id]}); }
-      else if (cur && s1 > cur * 1.3) changes.push({id, from:cur, to:cur, odd:true, est:roundHalf(s1)}); /* Tippfehler-Verdacht: nicht übernehmen */
+      else if (cur && raw > cur * 1.3) changes.push({id, from:cur, to:cur, odd:true, est:roundHalf(raw)}); /* Tippfehler-Verdacht: nicht übernehmen */
       else if (cur && s1 > cur * 1.01) { const to = roundHalf(Math.min(s1, cur * 1.1)); p.e1[id] = to; changed = true; p.low[id] = 0; changes.push({id, from:cur, to}); } /* max. +10 % pro Einheit */
       else if (cur && x.plan && x.plan.mode === 'pct' && s1 < cur * 0.93 && (x.feel === 'hard' || entryMiss(x))) {
         p.low[id] = (p.low[id] || 0) + 1;
@@ -463,7 +476,7 @@ function applyProgress(p, sess) {
   return changes;
 }
 function closeBlock(p, sessions) {
-  const no = p.block.no, mine = sessions.filter(s => s.block === no), res = [];
+  const no = p.block.no, mine = sessions.filter(s => s.block === no && !s.prep), res = [];
   Object.keys(p.e1).forEach(id => {
     const e = EX[id]; if (!e) return;
     const ent = [];

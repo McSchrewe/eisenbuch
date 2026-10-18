@@ -12,8 +12,8 @@ function unwake() { try { if (wakeLock) wakeLock.release(); } catch (e) {} wakeL
 function startWorkout(free, planId) {
   const p = S.p, total = blockSessions(p), over = p.block.n >= total;
   /* Nach Blockende ohne Auswertung: mit den Werten der letzten Woche, ohne den Blockzähler zu erhöhen */
-  const w = free ? {planId:null, tplId:null, name:'Freies Training', pr:{week:0, label:'Frei', pct:0.75, reps:8, sets:3, deload:false}, items:[]} : buildWorkout(p, S.sessions, over ? total - 1 : p.block.n, planId);
-  S.active = {id:uid('s'), start:Date.now(), date:todayStr(), planId:w.planId, tplId:w.tplId, name:w.name, n:free || over ? null : p.block.n, pr:w.pr, block:p.block.no, items:w.items.map(itemFromPlan)};
+  const w = free ? {planId:null, tplId:null, name:'Freies Training', pr:{week:0, label:'Frei', pct:0.75, reps:8, sets:3, deload:false}, items:[]} : buildWorkout(p, S.sessions, over ? total - 1 : p.block.n, planId, {prep:S.ui.prepOne});
+  S.active = {id:uid('s'), start:Date.now(), date:todayStr(), planId:w.planId, tplId:w.tplId, name:w.name, n:free || over || w.pr.prep ? null : p.block.n, prep:!!w.pr.prep, pr:w.pr, block:p.block.no, items:w.items.map(itemFromPlan)};
   S.ui.woMin = false; S.ui.wf = null; S.ui.ws = null; saveActive(); render(); wake();
   if (free) openPicker({mode:'wadd'});
 }
@@ -21,13 +21,16 @@ function finishWorkout() {
   const a = S.active, p = S.p, end = Date.now();
   const ex = a.items.map(it => ({exId:it.exId, plan:it.plan, feel:it.feel, sets:it.sets.filter(s => s.done).map(s => ({kg:s.kg || 0, reps:s.reps || 0, done:true, warm:!!s.warm}))})).filter(x => x.sets.length);
   if (!ex.length) { toast('Noch kein Satz abgehakt. Hake erledigte Sätze mit ✓ ab oder verwirf das Training.'); return; }
-  const sess = {id:a.id, date:a.date, start:a.start, end, dur:end - a.start, planId:a.planId || null, tplId:a.tplId, name:a.name, block:a.block, week:a.pr.week, label:a.pr.label, deload:!!a.pr.deload, n:a.n, exercises:ex, note:(a.note || '').trim()};
-  sess.before = {e1:{...p.e1}, adj:{...p.adj}, n:p.block.n, no:p.block.no}; /* für sauberes Rückgängigmachen beim Löschen */
-  const prs = prCheck(S.sessions, sess), ch = applyProgress(p, sess);
+  const sess = {id:a.id, date:a.date, start:a.start, end, dur:end - a.start, planId:a.planId || null, tplId:a.tplId, name:a.name, block:a.block, week:a.pr.week, label:a.pr.label, deload:!!a.pr.deload, prep:!!a.prep, n:a.n, exercises:ex, note:(a.note || '').trim()};
+  sess.before = {e1:{...p.e1}, adj:{...p.adj}, n:p.block.n, no:p.block.no, prep:p.prep ? {...p.prep} : null}; /* für sauberes Rückgängigmachen beim Löschen */
+  const prs = sessRecords(S.sessions, sess), ch = applyProgress(p, sess);
   S.sessions.push(sess);
   if (a.n !== null && a.n === p.block.n && a.block === p.block.no) p.block.n++;
+  let prepDone = false;
+  if (a.prep && p.prep && p.prep.on) { p.prep.n = (p.prep.n || 0) + 1; if (p.prep.n >= p.prep.weeks * p.days.length) { p.prep.on = false; p.prep.doneBlock = p.block.no; p.block.started = todayStr(); prepDone = true; } }
+  S.ui.prepOne = false;
   S.active = null; S.rest = null; saveActive(); saveProfile(); saveSession(sess); unwake();
-  S.ui.sheet = {t:'summary', sess, prs, ch};
+  S.ui.sheet = {t:'summary', sess, prs, ch, prepDone};
   render();
 }
 
@@ -100,7 +103,9 @@ function sheetHTML() {
   if (sh.t === 'summary') {
     const s = sh.sess, ws = s.exercises.reduce((a, x) => a + workSets(x).length, 0);
     let h = '<p class="eyebrow">Gespeichert</p><h2>' + esc(s.name) + '</h2><div class="stats"><div><small>Dauer</small><b>' + fmtDur(s.dur) + '</b></div><div><small>Arbeitssätze</small><b>' + ws + '</b></div><div><small>Volumen</small><b>' + volT(sessionVolume(s)) + '</b></div></div>';
-    if (sh.prs.length) h += '<h3 style="margin-top:14px">Neue Bestwerte</h3><p class="hint">Bei Gewichtsübungen gemessen am geschätzten 1RM.</p>' + sh.prs.map(x => '<div class="exrow"><span>' + esc(EX[x.id].name) + '</span><span class="r">' + fmt(x.v) + ' ' + x.unit + ' <span class="delta">' + (x.prev ? '+' + fmt(Math.round((x.v - x.prev) * 10) / 10) : '') + '</span></span></div>').join('');
+    if (sh.prepDone) h += '<div class="banner" style="margin-top:12px"><span><b>Einstiegsphase geschafft</b><small>Ab der nächsten Einheit läuft Block ' + p.block.no + ', Woche 1.</small></span></div>';
+    else if (s.prep) h += '<p class="hint" style="margin-top:8px">Vorbereitung: zählt nicht zum Block.</p>';
+    if (sh.prs.length) h += '<h3 style="margin-top:14px">' + trophyMini() + ' Neue Rekorde</h3>' + sh.prs.map(x => '<div class="exrow"><span>' + esc(EX[x.id].name) + '<br><small>' + REC_T[x.k] + '</small></span><span class="r">' + esc(recFmt(x.k, x)) + '<br><small>vorher ' + esc(recUnit(x.k, x.prev)) + '</small></span></div>').join('');
     const real = sh.ch.filter(c => !c.odd), odd = sh.ch.filter(c => c.odd);
     if (real.length) h += '<h3 style="margin-top:14px">1RM angepasst</h3><p class="hint">Die Gewichte der folgenden Wochen sind neu berechnet.</p>' + real.map(c => '<div class="exrow"><span>' + esc(EX[c.id].name) + (c.down ? ' <small>(2× unter Plan)</small>' : '') + '</span><span class="r">' + (c.from ? fkg(c.from) + ' → ' : '') + fkg(c.to) + '</span></div>').join('');
     if (odd.length) h += '<h3 style="margin-top:14px">Nicht übernommen</h3>' + odd.map(c => '<p class="hint">' + esc(EX[c.id].name) + ': Die Einheit ergibt ein 1RM von ca. ' + fkg(c.est) + ', mehr als 30 % über ' + fkg(c.from) + '. Tippfehler? Falls echt, unter Mehr → Periodisierung von Hand setzen.</p>').join('');
@@ -262,12 +267,9 @@ const ACT = {
     if (!(s.reps > 0)) { toast('Trag erst die Wiederholungen ein.'); return; }
     if ((mode === 'pct' || mode === 'dp') && !(s.kg > 0)) { toast('Trag erst das Gewicht ein.'); return; }
     s.done = true;
-    /* Live-Bestwert wie bei Hevy: nur Gewichtsübungen, einmal pro Übung und Training */
-    const ex = EX[it.exId];
-    if (!s.warm && !it.prShown && s.kg > 0 && s.reps <= 12 && !ex.t && ex.eq !== 'KG') {
-      const hs = history(S.sessions, it.exId), now = roundHalf(EPLEY(s.kg, s.reps));
-      if (hs.length && hs[hs.length - 1].unit === 'kg' && now > Math.max(...hs.map(x => x.v)) + 0.4) { it.prShown = true; toast('Neuer Bestwert: ' + ex.name + ', 1RM ≈ ' + fkg(now)); beep(1320, 200); setTimeout(() => beep(1760, 260), 220); Nat.vib(120); }
-    }
+    /* Live-Rekord: Trophäe, sobald ein Satz einen Bestwert schlägt */
+    const nr = liveRecordCheck(it, j);
+    if (nr.length) { showTrophy(EX[it.exId], nr); beep(1320, 180); setTimeout(() => beep(1568, 180), 200); setTimeout(() => beep(2093, 320), 400); Nat.vib(160); }
     for (let k = j + 1; k < it.sets.length; k++) if (!it.sets[k].warm && it.sets[k].kg == null) it.sets[k].kg = s.kg;
     const ii = +t.dataset.i, pa = ssPartner(S.active, ii);
     if (!s.warm) S.rest = {end:Date.now() + restFor(it) * 1000}; else S.rest = {end:Date.now() + 60000};
@@ -277,7 +279,7 @@ const ACT = {
       if (it.ss) S.rest = null;
       if (open >= 0 && S.ui.wf != null) { setTimeout(() => { S.ui.wf = pa; S.ui.ws = open; renderWorkout(); const sc = $('#woscroll'); if (sc) sc.scrollTop = 0; }, 350); if (it.ss) toast('Supersatz: weiter mit ' + EX[other.exId].name); }
     }
-    if (S.ui.wf != null) { const nx = it.sets.findIndex((q, k) => k > j && !q.done); S.ui.ws = nx >= 0 ? nx : j; if (nx < 0 && woProg(it).done === woProg(it).all) toast(EX[it.exId].name + ' geschafft. Wie lief es?'); }
+    if (S.ui.wf != null) { const nx = it.sets.findIndex((q, k) => k > j && !q.done); S.ui.ws = nx >= 0 ? nx : j; if (nx < 0 && woProg(it).done === woProg(it).all && !nr.length) toast(EX[it.exId].name + ' geschafft. Wie lief es?'); }
     saveActive(); renderWorkout(); renderRest();
   },
   'set-add'(v, t) { const it = S.active.items[+t.dataset.i], l = it.sets.filter(s => !s.warm).pop() || it.sets[it.sets.length - 1]; it.sets.push({kg:l ? l.kg : null, reps:l ? l.reps : it.plan.reps, done:false}); saveActive(); renderWorkout(); },
@@ -288,6 +290,11 @@ const ACT = {
   'w-swap'(v, t) { openPicker({mode:'wswap', i:+t.dataset.i, m:EX[S.active.items[+t.dataset.i].exId].m}); },
   'w-rm'(v, t) { const i = +t.dataset.i; if (S.ui.rmI === i) S.ui.wf = null; if (S.ui.rmI !== i) { S.ui.rmI = i; renderWorkout(); setTimeout(() => { if (S.ui.rmI === i) { S.ui.rmI = null; renderWorkout(); } }, 4000); return; } S.ui.rmI = null; S.active.items.splice(i, 1); saveActive(); renderWorkout(); },
   'w-add'() { openPicker({mode:'wadd'}); },
+  'tro-x'() { hideTrophy(); },
+  'prep-on'(v) { S.p.prep = {on:true, weeks:+v || 3, n:0, started:todayStr()}; S.ui.prepOne = false; saveProfile(); render(); toast('Einstiegsphase gestartet: ' + S.p.prep.weeks + ' Wochen, beginnend mit 1 Satz je Übung.'); },
+  'prep-off'() { if (S.p.prep) S.p.prep.on = false; saveProfile(); render(); toast('Einstiegsphase beendet. Die nächste Einheit ist Block-Woche 1.'); },
+  'prep-wk'(v) { if (S.p.prep && S.p.prep.on) { S.p.prep.weeks = +v; saveProfile(); render(); } },
+  'prep-one'() { S.ui.prepOne = !S.ui.prepOne; render(); },
   fpics() { S.ui.fpics = !S.ui.fpics; renderWorkout(); },
   'wf-open'(v) { S.ui.wf = +v; S.ui.ws = null; S.ui.fpics = false; renderWorkout(); const sc = $('#woscroll'); if (sc) sc.scrollTop = 0; },
   'wf-close'() { S.ui.wf = null; renderWorkout(); },
@@ -363,7 +370,7 @@ const ACT = {
   'sess-del2'(v) {
     const s = S.sessions.find(x => x.id === v), isLast = S.sessions[S.sessions.length - 1] === s, p = S.p;
     let msg = 'Einheit gelöscht.';
-    if (s && isLast && s.before && s.before.no === p.block.no) { p.e1 = {...s.before.e1}; p.adj = {...s.before.adj}; p.block.n = s.before.n; msg = 'Einheit gelöscht. Gewichte und Blockstand sind zurückgesetzt.'; }
+    if (s && isLast && s.before && s.before.no === p.block.no) { p.e1 = {...s.before.e1}; p.adj = {...s.before.adj}; p.block.n = s.before.n; if (s.before.prep) p.prep = {...s.before.prep}; msg = 'Einheit gelöscht. Gewichte und Blockstand sind zurückgesetzt.'; }
     else if (s && s.n !== null) msg = 'Einheit gelöscht. Ältere Einheit: 1RM und Blockstand bleiben unverändert.';
     p.tomb.push(v); S.sessions = S.sessions.filter(x => x.id !== v); saveProfile(); Cloud.del('sessions', v); S.ui.sheet = null; render(); toast(msg);
   },

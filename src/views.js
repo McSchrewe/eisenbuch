@@ -34,6 +34,7 @@ function planLine(it) {
 }
 function phaseText(pr) {
   const M = MODELS[S.p.model];
+  if (pr.prep) return pr.label + ' · ' + pr.sets + ' Satz' + (pr.sets > 1 ? 'e' : '') + ' · ' + fmt(Math.round(pr.pct * 1000) / 10) + ' %';
   return 'Woche ' + pr.week + '/' + M.weeks + ' · ' + (S.p.model === 'dup' && !pr.deload ? pr.label + '-Tag' : pr.label) + ' · ' + fmt(Math.round(pr.pct * 1000) / 10) + ' %';
 }
 function head(title, eyebrow, right) { return '<header class="apphead"><div>' + (eyebrow ? '<p class="eyebrow">' + eyebrow + '</p>' : '') + '<h1>' + title + '</h1></div>' + (right || '') + '</header>'; }
@@ -100,6 +101,20 @@ function heroCard(w, label) {
   return '<div class="hero"><button class="play" data-act="pl-start" data-v="' + (w.planId || '') + '" aria-label="' + esc(w.name) + ' starten">' + I(ICONS.play) + '</button>' +
     '<div class="hero-t"><small>' + label + '</small><b>' + esc(w.name) + '</b><span>' + esc(phaseText(w.pr)) + ' · ca. ' + w.est + ' min</span></div></div>';
 }
+/* Einstieg: Hinweis nach Pause oder zu Blockbeginn, Häkchen für eine einzelne Vorbereitungseinheit */
+function pauseDays() { const l = S.sessions.length ? S.sessions[S.sessions.length - 1] : null; return l ? Math.round((parseD(todayStr()) - parseD(l.date)) / 864e5) : null; }
+function prepBanner() {
+  const p = S.p; if (S.active || (p.prep && p.prep.on)) return '';
+  const pd = pauseDays(), fresh = p.block.n === 0 && (!p.prep || p.prep.doneBlock !== p.block.no);
+  if (!(pd === null || pd >= 10 || fresh)) return '';
+  return '<div class="card prepc"><b>' + (pd !== null && pd >= 10 ? pd + ' Tage Pause' : 'Neuer Block') + ': erst einsteigen?</b><p class="sub" style="margin-top:4px">Einstiegsphase vor dem Zyklus: Woche 1 mit 1 Satz je Übung bei 60 %, dann 2 Sätze bei 65 %, dann 3 Sätze bei 70 %. Zählt nicht zum Block.</p>' +
+    '<div class="chips" style="margin-top:8px">' + [1, 2, 3].map(w => '<button class="chip" data-act="prep-on" data-v="' + w + '">' + w + ' Woche' + (w > 1 ? 'n' : '') + '</button>').join('') + '</div></div>';
+}
+function prepLine(w) {
+  const p = S.p;
+  if (p.prep && p.prep.on) { const d = p.days.length, done = p.prep.n || 0, all = p.prep.weeks * d; return '<div class="row prepl"><span class="sub">Einstieg · Einheit ' + (done + 1) + ' von ' + all + ' · zählt nicht zum Block</span><button class="link" data-act="prep-off">Beenden</button></div>'; }
+  return '<button class="chkrow" data-act="prep-one" aria-pressed="' + !!S.ui.prepOne + '"><span class="cbox">' + (S.ui.prepOne ? I(ICONS.check) : '') + '</span><span>Nur Vorbereitung <small>(2 Sätze bei 65 %, zählt nicht zum Zyklus)</small></span></button>';
+}
 function vTrain() {
   const p = S.p, pg = activeProgram(p), M = MODELS[p.model], total = blockSessions(p), n = p.block.n;
   let h = head('Training', esc(dlong(todayStr())), '<button class="ic" data-act="tab" data-v="more" aria-label="Mehr und Einstellungen">' + I(ICONS.gear) + '</button>') + '<button class="pill" data-act="prog-open"><small>Programm</small><span>' + esc(pg.name) + '</span>' + I(ICONS.chev, 'i s') + '</button>';
@@ -110,8 +125,8 @@ function vTrain() {
   } else if (!S.active) {
     const np = nextPlan(p, S.sessions);
     if (np) {
-      const w = buildWorkout(p, S.sessions, n, np.plan.id);
-      h += heroCard(w, (np.today ? 'Heute' : esc(dweek(np.date))) + ' · ' + esc(p.time) + ' Uhr') + '<div class="blockline">' + blockSegs() + '<small>Block ' + p.block.no + ' · Einheit ' + (n + 1) + ' von ' + total + '</small></div>';
+      const w = buildWorkout(p, S.sessions, n, np.plan.id, {prep:S.ui.prepOne});
+      h += prepBanner() + heroCard(w, (np.today ? 'Heute' : esc(dweek(np.date))) + ' · ' + esc(p.time) + ' Uhr') + prepLine(w) + '<div class="blockline">' + blockSegs() + '<small>' + (p.prep && p.prep.on ? 'Block ' + p.block.no + ' startet nach dem Einstieg' : 'Block ' + p.block.no + ' · Einheit ' + (n + 1) + ' von ' + total) + '</small></div>';
       if (!np.today) h += '<p class="hint" style="margin:-4px 0 12px">Heute ist kein Training geplant. Du kannst trotzdem jeden Plan starten.</p>';
     } else h += '<div class="empty">Noch kein Plan in diesem Programm. Leg unten einen an.</div>';
   }
@@ -123,9 +138,9 @@ function vTrain() {
 }
 function vPlanDetail(id) {
   const p = S.p, pl = findPlan(p, id); if (!pl) { S.ui.pv = null; return vTrain(); }
-  const ed = !!S.ui.pedit, n = Math.min(p.block.n, blockSessions(p) - 1), w = buildWorkout(p, S.sessions, n, pl.id);
+  const ed = !!S.ui.pedit, n = Math.min(p.block.n, blockSessions(p) - 1), w = buildWorkout(p, S.sessions, n, pl.id, {prep:S.ui.prepOne});
   let h = subhead(pl.name, 'pl-back', '<button class="ic' + (ed ? ' on' : '') + '" data-act="pl-edit" aria-label="' + (ed ? 'Bearbeiten beenden' : 'Plan bearbeiten') + '">' + I(ed ? ICONS.check : ICONS.edit) + '</button>');
-  if (!S.active) h += heroCard(w, 'Training starten');
+  if (!S.active) h += heroCard(w, 'Training starten') + prepLine(w);
   if (ed) {
     h += '<div class="card"><label class="lab" for="pl-name">Name</label><input type="text" id="pl-name" data-chg="plname" data-v="' + pl.id + '" value="' + esc(pl.name) + '">' +
       '<label class="lab">Wochentage</label><div class="chips">' + DAYS.map((d, i) => '<button class="chip" data-act="pl-day" data-v="' + i + '" aria-pressed="' + pl.days.includes(i) + '">' + d + '</button>').join('') + '</div>' +
@@ -146,8 +161,9 @@ function vPlanDetail(id) {
 /* ----- Statistik ----- */
 function vStats() {
   const seg = S.ui.sseg || '', p = S.p;
-  let h = head('Statistik', 'Fortschritt') + segc('sseg', seg, [['', 'Kraft'], ['ex', 'Übungen (' + EXLIST.length + ')']]);
+  let h = head('Statistik', 'Fortschritt') + segc('sseg', seg, [['', 'Kraft'], ['rec', 'Rekorde'], ['ex', 'Übungen']]);
   if (seg === 'ex') return h + vEx();
+  if (seg === 'rec') return h + vRecords();
   const mon = mondayOf(todayStr()), wv = weeklyVolume(S.sessions, 10), v4 = wv.slice(-4).reduce((a, b) => a + b.v, 0);
   h += '<div class="stats tiles"><div><small>Einheiten</small><b>' + S.sessions.length + '</b></div><div><small>Diese Woche</small><b>' + weekCount(mon) + '</b><small>+ ' + weekRuns(mon) + ' Lauf</small></div><div><small>Serie</small><b>' + weekStreak() + ' Wo.</b></div></div>';
   h += liftCard(S.ui.sper || '3M') + workoutCard() + muscleCard();
@@ -230,6 +246,11 @@ function vPeri() {
     '<p><b>Zwei schwache Einheiten in Folge</b> (Limit oder Wiederholungen deutlich verfehlt) senken das 1RM moderat, eine einzelne nur das nächste Gewicht um eine Stufe.</p>' +
     '<p>Am Blockende steigt das 1RM um 2,5 kg (Oberkörper) bzw. 5 kg (Beine, Kreuzheben), wenn du in mindestens 75 % der Einheiten alle Wiederholungen geschafft hast.</p>' +
     '<p>Isolationsübungen: erst die Wiederholungen bis zum oberen Ende steigern, dann das Gewicht. Nach mindestens 14 Tagen Pause startet die nächste Einheit 10 % leichter.</p></div></details></div>';
+  const pp = p.prep || {};
+  h += '<div class="card"><h2>Einstiegsphase</h2><p class="sub">Nach Pause, Krankheit oder zum Neustart: steigert die Arbeitssätze von 1 auf 3 und die Last von 60 auf 70 %, bevor der Block beginnt. Diese Einheiten zählen nicht zum Block und nicht zur Blockauswertung.</p>' +
+    (pp.on ? '<p style="margin-top:8px"><b>Läuft:</b> Einheit ' + ((pp.n || 0) + 1) + ' von ' + pp.weeks * d + '</p><label class="lab">Dauer</label><div class="chips">' + [1, 2, 3].map(w => '<button class="chip" data-act="prep-wk" data-v="' + w + '" aria-pressed="' + (pp.weeks === w) + '">' + w + ' Wo.</button>').join('') + '</div><button class="btn ghost wide" style="margin-top:10px" data-act="prep-off">Einstiegsphase beenden</button>'
+      : '<div class="chips" style="margin-top:8px">' + [1, 2, 3].map(w => '<button class="chip" data-act="prep-on" data-v="' + w + '">' + w + ' Woche' + (w > 1 ? 'n' : '') + ' starten</button>').join('') + '</div>') +
+    '<div class="scrollx" style="margin-top:10px"><table class="tbl"><thead><tr><th>Wo.</th><th>Sätze</th><th>Last</th><th>Wdh.</th></tr></thead><tbody>' + PREP[pp.weeks || 3].map((x, i) => '<tr><td>' + (i + 1) + '</td><td>' + x.sets + '</td><td>' + fmt(Math.round(x.pct * 1000) / 10) + ' %</td><td>' + x.reps + '</td></tr>').join('') + '</tbody></table></div></div>';
   h += '<div class="card"><h2>Wochen im Block</h2><div class="scrollx"><table class="tbl"><thead><tr><th>Wo.</th><th>Phase</th><th>Last</th><th>Sätze</th><th>' + esc(EX[key].name.split(' (')[0]) + '</th></tr></thead><tbody>';
   for (let w = 0; w < M.weeks; w++) {
     const seen = {}, rows = [];

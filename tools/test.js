@@ -1,7 +1,7 @@
 /* Logik-Tests ohne Browser: simuliert zwei komplette Blöcke für jedes Modell und jeden Split */
 const fs = require('fs'), vm = require('vm'), path = require('path'), assert = require('assert');
-const code = fs.readFileSync(path.join(__dirname, '../src/logic.js'), 'utf8') + fs.readFileSync(path.join(__dirname, '../src/plans.js'), 'utf8') +
-  ';globalThis.T={EX,EXLIST,TPL,SPLITS,MODELS,MAIN_LIFTS,GRIP_ROT,defaultProfile,buildWorkout,PROG_TPL,programFromTemplate,ensurePrograms,nextPlan,activeProgram,blockSessions,applyProgress,closeBlock,startNextBlock,estimateFromBW,EPLEY,plateCalc,warmups};';
+const code = fs.readFileSync(path.join(__dirname, '../src/logic.js'), 'utf8') + fs.readFileSync(path.join(__dirname, '../src/plans.js'), 'utf8') + fs.readFileSync(path.join(__dirname, '../src/records.js'), 'utf8').replace("'use strict';", '') +
+  ';globalThis.T={EX,EXLIST,TPL,SPLITS,MODELS,MAIN_LIFTS,GRIP_ROT,defaultProfile,buildWorkout,PROG_TPL,programFromTemplate,ensurePrograms,nextPlan,activeProgram,blockSessions,applyProgress,closeBlock,startNextBlock,estimateFromBW,EPLEY,plateCalc,warmups,recordsOf,newRecords,sessRecords,recordEvents,prepPr};';
 const ctx = {console, Intl, Math, Date}; vm.createContext(ctx); vm.runInContext(code, ctx); const T = ctx.T;
 for (const t of Object.values(T.TPL)) t.ex.forEach(id => assert(T.EX[id], 'Übung fehlt: ' + id));
 T.GRIP_ROT.forEach(id => assert(T.EX[id], 'Griff-Übung fehlt: ' + id));
@@ -42,3 +42,36 @@ console.log('OK:', T.EXLIST.length, 'Übungen,', n, 'simulierte Einheiten, alle 
   p = mk(); run(p, 70, 6, 'hard'); assert.strictEqual(p.e1.bankdruecken, 100, 'eine schwache Einheit senkt nicht'); run(p, 70, 6, 'hard'); assert(p.e1.bankdruecken < 100 && p.e1.bankdruecken >= 90, 'zwei schwache Einheiten senken moderat, ist ' + p.e1.bankdruecken);
 }
 console.log('OK: Autoregulation (Mehrleistung, Tippfehler, zwei schwache Einheiten)');
+
+/* Einstiegsphase: 3 Wochen, 1 → 2 → 3 Sätze bei 60 → 70 %, zählt nicht zum Block */
+{
+  const p = T.defaultProfile(); Object.assign(p, {model:'linear', split:'fullbody', days:[0, 2, 4], done:true}); p.e1 = {kniebeuge:100, bankdruecken:100, kreuzheben:100, ohp:60, 'lh-rudern':80}; T.ensurePrograms(p);
+  p.prep = {on:true, weeks:3, n:0};
+  const exp = [[1, 0.60], [2, 0.65], [3, 0.70]];
+  for (let wk = 0; wk < 3; wk++) for (let d = 0; d < 3; d++) {
+    const w = T.buildWorkout(p, [], 0); const sq = w.items.find(it => it.mode === 'pct');
+    assert(w.pr.prep, 'Einstieg erwartet'); assert.strictEqual(sq.sets, exp[wk][0], 'Woche ' + (wk + 1) + ': Sätze'); assert.strictEqual(w.pr.pct, exp[wk][1]);
+    p.prep.n++;
+  }
+  assert.strictEqual(p.block.n, 0, 'Einstieg darf den Block nicht weiterzählen');
+  p.prep.on = false; const w = T.buildWorkout(p, [], 0); assert(!w.pr.prep && w.pr.pct === 0.70 && w.pr.week === 1, 'danach Block-Woche 1');
+  const one = T.buildWorkout(p, [], 0, null, {prep:true}); assert(one.pr.prep && one.items.find(it => it.mode === 'pct').sets === 2, 'einzelne Vorbereitung: 2 Sätze');
+}
+{ /* Einstieg: 80 kg × 8 statt Plan 60 kg × 8 → 1RM nach echter Leistung (≈ 105 kg), nicht nach Planverhältnis, kein Tippfehler */
+  const p = T.defaultProfile(); p.e1 = {bankdruecken:100}; p.adj = {};
+  const ch = T.applyProgress(p, {prep:true, exercises:[{exId:'bankdruecken', feel:'ok', plan:{mode:'pct', kg:60, reps:8, sets:1}, sets:[{kg:80, reps:8, done:true}]}]});
+  assert(!ch.some(c => c.odd) && p.e1.bankdruecken >= 104 && p.e1.bankdruecken <= 106, 'Einstieg-Mehrleistung: ' + p.e1.bankdruecken);
+}
+console.log('OK: Einstiegsphase');
+/* Rekorde: erstes Training kein Rekord; Gewicht und Satz-Volumen getrennt */
+{
+  const S1 = {date:'2026-10-01', start:1, exercises:[{exId:'bankdruecken', sets:[{kg:60, reps:8, done:true}, {kg:65, reps:5, done:true}]}]};
+  const S2 = {date:'2026-10-08', start:2, exercises:[{exId:'bankdruecken', sets:[{kg:62.5, reps:8, done:true}]}]};
+  assert.strictEqual(T.sessRecords([], S1).length, 0, 'erstes Training: keine Rekorde');
+  const r = T.sessRecords([S1], S2), ks = r.map(x => x.k).sort().join();
+  assert.strictEqual(ks, 'e1,vol', 'Satz 62,5×8: bester Satz und 1RM, aber nicht höchstes Gewicht (65 kg), ist ' + ks);
+  const nr = T.newRecords(T.EX.bankdruecken, T.recordsOf([S1, S2], 'bankdruecken'), {kg:67.5, reps:3, done:true});
+  assert(nr.some(x => x.k === 'kg' && x.v === 67.5) && !nr.some(x => x.k === 'vol'), '67,5×3: Gewichtsrekord, kein Volumenrekord');
+  assert.strictEqual(T.recordEvents([S1, S2]).length, 2);
+}
+console.log('OK: Rekorde');
