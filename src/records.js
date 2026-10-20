@@ -71,7 +71,7 @@ function showTrophy(e, recs) {
   const el = $('#trophy'); if (!el) return;
   el.innerHTML = '<div class="tro-card" role="alert"><div class="tro-ic">' + TROPHY_SVG + '<i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><b class="tro-h">Neuer Rekord!</b><p class="tro-n">' + esc(e.name) + '</p>' +
     recs.map(r => '<div class="tro-row"><small>' + REC_T[r.k] + '</small><span>' + esc(recFmt(r.k, r)) + '</span><em>vorher ' + esc(recUnit(r.k, r.prev)) + '</em></div>').join('') + '<small class="tro-x">Antippen zum Schließen</small></div>';
-  el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+  el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); $('#toast').classList.remove('on');
   clearTimeout(showTrophy.t); showTrophy.t = setTimeout(hideTrophy, 4500);
 }
 function hideTrophy() { const el = $('#trophy'); if (el) { el.hidden = true; el.classList.remove('go'); el.innerHTML = ''; } }
@@ -86,16 +86,78 @@ function liveRecordCheck(it, j) {
 /* ----- Rekord-Reiter in der Statistik ----- */
 function vRecords() {
   const ids = [...new Set(S.sessions.flatMap(s => s.exercises.map(x => x.exId)))].filter(id => EX[id]);
-  if (!ids.length) return '<div class="empty">Noch keine Einträge. Rekorde entstehen automatisch, sobald du eine Übung zum zweiten Mal trainierst und dich verbesserst.</div>';
+  if (!ids.length) return badgesHTML() + '<div class="empty" style="margin-top:12px">Noch keine Einträge. Rekorde entstehen automatisch, sobald du eine Übung zum zweiten Mal trainierst und dich verbesserst.</div>';
   const ev = recordEvents(S.sessions), last = {};
   ev.forEach(r => { if (!last[r.id]) last[r.id] = r.date; });
   const recent = d => d && (parseD(todayStr()) - parseD(d)) / 864e5 <= 14;
   const mon = todayStr().slice(0, 7), thisM = ev.filter(r => r.date.startsWith(mon)).length;
-  let h = '<div class="stats tiles"><div><small>Rekorde gesamt</small><b>' + ev.length + '</b></div><div><small>Diesen Monat</small><b>' + thisM + '</b></div><div><small>Übungen</small><b>' + ids.length + '</b></div></div>';
+  let h = badgesHTML() + '<div class="stats tiles" style="margin-top:14px"><div><small>Rekorde gesamt</small><b>' + ev.length + '</b></div><div><small>Diesen Monat</small><b>' + thisM + '</b></div><div><small>Übungen</small><b>' + ids.length + '</b></div></div>';
   h += '<h2 class="sec">Neueste Rekorde</h2>' + (ev.length ? '<div class="list">' + ev.slice(0, 8).map(r => '<button class="exitem" data-act="ex-open" data-v="' + r.id + '">' + trophyMini() + '<span class="exm"><b>' + esc(EX[r.id].name) + '</b><small>' + REC_T[r.k] + ': ' + esc(recFmt(r.k, r)) + ' · vorher ' + esc(recUnit(r.k, r.prev)) + '</small></span><small class="num exr">' + esc(dshort(r.date)) + '</small></button>').join('') + '</div>' : '<div class="empty">Noch kein Rekord gebrochen. Ab dem zweiten Training einer Übung wird jede Verbesserung hier gefeiert.</div>');
   h += '<h2 class="sec">Bestwerte je Übung</h2><div class="list">' + ids.map(id => ({id, r:recordsOf(S.sessions, id)})).filter(x => x.r)
     .sort((a, b) => (last[b.id] || '').localeCompare(last[a.id] || '') || EX[a.id].name.localeCompare(EX[b.id].name))
     .map(({id, r}) => { const e = EX[id]; return '<button class="exitem" data-act="ex-open" data-v="' + id + '">' + avatar(e) + '<span class="exm"><b>' + esc(e.name) + '</b><small>' + recKinds(e).filter(k => r[k]).map(k => REC_T[k] + ': ' + esc(recFmt(k, r[k]))).join('<br>') + '</small></span>' + (recent(last[id]) ? trophyMini() : '') + '</button>'; }).join('') + '</div>' +
     '<p class="hint" style="margin-top:10px">Bester Satz = Gewicht × Wiederholungen eines einzelnen Satzes. Das geschätzte 1RM nutzt die Epley-Formel (bis 12 Wiederholungen). Die Trophäe markiert Rekorde der letzten 14 Tage.</p>';
   return h;
+}
+
+/* ===== Abzeichen ===== */
+const MEDAL_SVG = '<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M22 4h8l4 14h-8zM42 4h-8l-4 14h8z" fill="#5B9BE5"/><circle cx="32" cy="38" r="18" fill="url(#tg2)"/><circle cx="32" cy="38" r="13" fill="none" stroke="#FFF6CF" stroke-width="2" opacity=".7"/><path d="M32 29l2.8 5.8 6.2.9-4.5 4.4 1 6.2-5.5-2.9-5.5 2.9 1-6.2-4.5-4.4 6.2-.9z" fill="#FFF6CF"/><defs><linearGradient id="tg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE38A"/><stop offset="1" stop-color="#C98A12"/></linearGradient></defs></svg>';
+function bwNow() { const b = S.body.filter(x => x.kg > 0).sort((a, c) => a.date < c.date ? -1 : 1).pop(); return (b && b.kg) || S.p.bw || null; }
+function e1x(id, f) { const bw = bwNow(), v = S.p.e1 && S.p.e1[id]; return !!(bw && v && v >= bw * f); }
+function gripBest(type) { const h = S.grip.filter(g => g.type === type); return h.length ? Math.max(...h.map(gripVal)) : 0; }
+const BADGES = [
+  ['first', 'Kraft', 'Erstes Training', 'Die erste Einheit gespeichert', () => S.sessions.length >= 1],
+  ['s10', 'Kraft', 'Dranbleiber', '10 Einheiten', () => S.sessions.length >= 10],
+  ['s50', 'Kraft', 'Stammgast', '50 Einheiten', () => S.sessions.length >= 50],
+  ['s100', 'Kraft', 'Eisenbuch-Veteran', '100 Einheiten', () => S.sessions.length >= 100],
+  ['streak4', 'Kraft', 'Vier Wochen am Stück', '4 Wochen in Folge trainiert', () => weekStreak() >= 4],
+  ['streak12', 'Kraft', 'Ein Quartal Disziplin', '12 Wochen in Folge trainiert', () => weekStreak() >= 12],
+  ['rec1', 'Kraft', 'Erster Rekord', 'Einen Bestwert gebrochen', () => recordEvents(S.sessions).length >= 1],
+  ['rec25', 'Kraft', 'Rekordjäger', '25 Rekorde', () => recordEvents(S.sessions).length >= 25],
+  ['prep', 'Kraft', 'Sauber eingestiegen', 'Eine Einstiegsphase abgeschlossen', () => !!(S.p.prep && S.p.prep.doneBlock)],
+  ['block1', 'Kraft', 'Block geschafft', 'Den ersten Trainingsblock ausgewertet', () => S.p.block.no >= 2],
+  ['block4', 'Kraft', 'Vier Blöcke', 'Vier Trainingsblöcke ausgewertet', () => S.p.block.no >= 5],
+  ['sq1', 'Kraft', 'Kniebeuge = Körpergewicht', 'Geschätztes 1RM Kniebeuge ≥ 1,0 × Körpergewicht', () => e1x('kniebeuge', 1)],
+  ['sq15', 'Kraft', 'Kniebeuge 1,5 ×', 'Geschätztes 1RM Kniebeuge ≥ 1,5 × Körpergewicht', () => e1x('kniebeuge', 1.5)],
+  ['dl2', 'Kraft', 'Kreuzheben 2 ×', 'Geschätztes 1RM Kreuzheben ≥ 2,0 × Körpergewicht', () => e1x('kreuzheben', 2)],
+  ['bp1', 'Kraft', 'Bankdrücken = Körpergewicht', 'Geschätztes 1RM Bankdrücken ≥ 1,0 × Körpergewicht', () => e1x('bankdruecken', 1)],
+  ['vol100', 'Kraft', '100 Tonnen', '100 t Gesamtvolumen bewegt', () => S.sessions.reduce((a, s) => a + sessionVolume(s), 0) >= 100000],
+  ['g1', 'Griff', 'Erster Griff-Test', 'Ausgangswert für die Saison', () => S.grip.length >= 1],
+  ['hang60', 'Griff', 'Eine Minute hängen', 'Dead Hang ≥ 60 s', () => gripBest('hang') >= 60],
+  ['hang90', 'Griff', 'Klammergriff', 'Dead Hang ≥ 90 s', () => gripBest('hang') >= 90],
+  ['w1', 'Wake', 'Erste Session', 'Die erste Wake-Session eingetragen', () => S.wake.length >= 1],
+  ['w10', 'Wake', 'Saison-Stammgast', '10 Sessions in einem Jahr', () => { const c = {}; S.wake.forEach(w => { const y = w.date.slice(0, 4); c[y] = (c[y] || 0) + 1; }); return Object.values(c).some(n => n >= 10); }],
+  ['inv', 'Wake', 'Kopfüber', 'Den ersten Invert gestanden', () => Object.keys(T_INV).some(id => tSt(id, 's') >= 2 || tSt(id, 'w') >= 2)],
+  ['sw1', 'Wake', 'Andere Seite', 'Den ersten Trick in Switch gestanden', () => TRICKS.some(t => tSt(t.id, 'w') >= 2)],
+  ['both10', 'Wake', 'Beidseitig', '10 Tricks in beiden Stances gestanden', () => riderStats().both >= 10],
+  ['lvl3c', 'Wake', 'Level 3 komplett', 'Level 3 mit Switch abgeschlossen', () => riderStats().closed >= 3],
+  ['lvl5', 'Wake', 'Rider-Level 5', 'Level 5 geöffnet', () => riderStats().lvl >= 5],
+  ['lvl7', 'Wake', 'Showtime', 'Rider-Level 7: Inverts und Spins', () => riderStats().lvl >= 7],
+  ['q80', 'Wake', 'Sitzt wirklich', 'Ein Trick mit ≥ 80 % über ≥ 10 Versuche', () => TRICKS.some(t => sitztReady(t.id, 's') || sitztReady(t.id, 'w'))],
+  ['perfect', 'Wake', 'Fehlerlos', 'Eine Session mit ≥ 10 Versuchen und 100 % gelandet', () => S.wake.some(w => { const a = (w.tricks || []).reduce((b, x) => b + entA(x), 0), l = (w.tricks || []).reduce((b, x) => b + entL(x), 0); return a >= 10 && l === a; })],
+  ['goals', 'Wake', 'Plan erfüllt', 'Alle Ziele einer Session gelandet', () => S.wake.some(w => w.goalN && w.goalHit === w.goalN)]
+].map(b => ({id:b[0], cat:b[1], name:b[2], desc:b[3], test:b[4]}));
+function badgeTest(b) { try { return !!b.test(); } catch (e) { return false; } }
+/* Prüft alle Abzeichen. Beim allerersten Lauf still vergeben, damit bestehende Erfolge kein Popup-Gewitter auslösen. */
+function checkBadges(silent) {
+  if (!S.p) return [];
+  const first = !S.p.badges; S.p.badges = S.p.badges || {};
+  const got = BADGES.filter(b => !S.p.badges[b.id] && badgeTest(b));
+  if (!got.length) { if (first) saveProfile(); return []; }
+  got.forEach(b => { S.p.badges[b.id] = todayStr(); });
+  saveProfile();
+  if (!first && !silent) setTimeout(() => showBadges(got), S.ui.sheet ? 600 : 0);
+  return got;
+}
+function showBadges(list) {
+  const el = $('#trophy'); if (!el) return;
+  el.innerHTML = '<div class="tro-card" role="alert"><div class="tro-ic">' + MEDAL_SVG + '<i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><b class="tro-h">Abzeichen' + (list.length > 1 ? ' × ' + list.length : '') + '</b>' +
+    list.map(b => '<div class="tro-row"><span style="text-align:left">' + esc(b.name) + '</span><small style="text-align:right">' + esc(b.cat) + '</small><em style="text-align:left">' + esc(b.desc) + '</em></div>').join('') + '<small class="tro-x">Antippen zum Schließen</small></div>';
+  el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); $('#toast').classList.remove('on');
+  clearTimeout(showTrophy.t); showTrophy.t = setTimeout(hideTrophy, 5000);
+  beep(1047, 160); setTimeout(() => beep(1319, 160), 180); setTimeout(() => beep(1568, 300), 360); Nat.vib(120);
+}
+function badgesHTML(cat) {
+  const list = BADGES.filter(b => !cat || b.cat === cat), have = S.p.badges || {}, n = list.filter(b => have[b.id]).length;
+  return '<h2 class="sec">Abzeichen · ' + n + ' von ' + list.length + '</h2><div class="bgrid">' + list.map(b => '<div class="bdg' + (have[b.id] ? ' on' : '') + '"><span class="bm">' + MEDAL_SVG + '</span><b>' + esc(b.name) + '</b><small>' + esc(b.desc) + (have[b.id] ? ' · ' + esc(dshort(have[b.id])) : '') + '</small></div>').join('') + '</div>';
 }

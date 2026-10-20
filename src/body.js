@@ -20,6 +20,9 @@ function vBody() {
     '<div><label class="lab" for="bf-kg">Gewicht (kg)</label><input type="text" inputmode="decimal" id="bf-kg" value="' + (today ? fmt(today.kg) : '') + '" placeholder="z. B. 82,4"></div>' +
     '<div><label class="lab" for="bf-bf">Körperfett (%, optional)</label><input type="text" inputmode="decimal" id="bf-bf" value="' + (today && today.bf ? fmt(today.bf) : '') + '"></div>' +
     '<div><label class="lab" for="bf-w">Taille (cm, optional)</label><input type="text" inputmode="decimal" id="bf-w" value="' + (today && today.waist ? fmt(today.waist) : '') + '"></div></div>' +
+    '<details style="margin-top:8px"' + (today && (today.arm || today.chest || today.thigh) ? ' open' : '') + '><summary>Umfänge für Muskelaufbau (optional)</summary><div class="pair">' +
+    [['arm', 'Oberarm (cm)'], ['chest', 'Brust (cm)'], ['thigh', 'Oberschenkel (cm)']].map(([k, l]) => '<div><label class="lab" for="bf-' + k + '">' + l + '</label><input type="text" inputmode="decimal" id="bf-' + k + '" value="' + (today && today[k] ? fmt(today[k]) : '') + '"></div>').join('') +
+    '</div><p class="hint">Alle 2–4 Wochen messen, entspannt und immer an derselben Stelle (Oberarm an der dicksten Stelle, Oberschenkel 15 cm über der Kniescheibe).</p></details>' +
     '<p class="hint" style="margin-top:8px">Am besten morgens nach dem Aufstehen wiegen, immer unter denselben Bedingungen. Ein Eintrag pro Tag, ein zweiter überschreibt den ersten.</p>' +
     '<button class="btn wide" style="margin-top:8px" data-act="b-save">' + (today ? 'Eintrag aktualisieren' : 'Speichern') + '</button></div>';
   let h = '';
@@ -32,7 +35,7 @@ function vBody() {
   else h += '<p class="hint">Für eine Kurve braucht es mindestens zwei Messungen im Zeitraum.</p>';
   const pt = (f) => tp.filter(x => f(x) != null).map(x => ({t:parseD(x.date).getTime(), v:f(x)}));
   h += statTable([{name:'Gewicht (kg)', pts:pt(x => x.kg), unit:'kg', good:goal ? (goal < last.avg ? 'down' : 'up') : null}, {name:'BMI', pts:hgt ? pt(x => bmi(x.kg)) : [], unit:'', dec:1, good:null},
-    {name:'Körperfett (%)', pts:pt(x => x.bf), unit:'%', good:'down'}, {name:'Taille (cm)', pts:pt(x => x.waist), unit:'cm', good:'down'}]);
+    {name:'Körperfett (%)', pts:pt(x => x.bf), unit:'%', good:'down'}, {name:'Taille (cm)', pts:pt(x => x.waist), unit:'cm', good:'down'}, {name:'Oberarm (cm)', pts:pt(x => x.arm), unit:'cm', good:'up'}, {name:'Brust (cm)', pts:pt(x => x.chest), unit:'cm', good:'up'}, {name:'Oberschenkel (cm)', pts:pt(x => x.thigh), unit:'cm', good:'up'}]);
   if (goal) h += '<p style="margin-top:10px">Ziel ' + fkg(goal) + ': noch ' + fmt(Math.abs(Math.round((last.avg - goal) * 10) / 10)) + ' kg ' + (last.avg > goal ? 'abnehmen' : last.avg < goal ? 'zunehmen' : '') + '.</p>';
   h += '<div class="row" style="justify-content:flex-start;gap:16px;margin-top:6px"><button class="link" data-act="b-goal">' + (goal ? 'Zielgewicht ändern' : 'Zielgewicht setzen') + '</button><button class="link" data-act="b-height">' + (hgt ? 'Größe ändern' : 'Größe für BMI eintragen') + '</button></div></div>';
   h += entry;
@@ -46,6 +49,7 @@ function bodySaveAct() {
   if (!(kg > 30 && kg < 300)) { toast('Gewicht in kg eintragen, z. B. 82,4.'); return; }
   const old = S.body.find(x => x.date === date);
   const e = {id:old ? old.id : uid('b'), date, kg, bf:bf > 0 ? bf : null, waist:w > 0 ? w : null};
+  ['arm', 'chest', 'thigh'].forEach(k => { const el = $('#bf-' + k), v = el ? parseNum(el.value) : null; e[k] = v > 0 ? v : null; });
   S.body = S.body.filter(x => x.date !== date); S.body.push(e); saveBody(e);
   if (date >= (S.p.bwDate || '')) { S.p.bw = kg; S.p.bwDate = date; saveProfile(); }
   render(); toast('Gespeichert: ' + fkg(kg) + '.');

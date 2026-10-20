@@ -220,7 +220,7 @@ const MODELS = {
       {l:'Aufbau',pct:0.75,reps:8,sets:4},
       {l:'Kraft',pct:0.80,reps:6,sets:3},
       {l:'Kraft',pct:0.825,reps:5,sets:3},
-      {l:'Peak',pct:0.85,reps:4,sets:3},
+      {l:'Peak',pct:0.85,reps:4,sets:3,top:{pct:0.90,reps:3},back:{pct:0.80,reps:5}}, /* Hauptübungen: Topsatz × 3, dann Back-off */
       {l:'Deload',pct:0.70,reps:5,sets:2,deload:true}
     ]
   },
@@ -255,7 +255,7 @@ function prescribe(p, n) {
   const d = p.days.length, M = MODELS[p.model], wi = Math.floor(n / d), di = n % d;
   if (wi >= M.weeks) return null;
   const w = M.wk[wi];
-  if (p.model === 'linear') return {week:wi+1, dayIdx:di, label:w.l, pct:w.pct, reps:w.reps, sets:w.sets, deload:!!w.deload};
+  if (p.model === 'linear') return {week:wi+1, dayIdx:di, label:w.l, pct:w.pct, reps:w.reps, sets:w.sets, deload:!!w.deload, top:w.top || null, back:w.back || null};
   if (w.deload) return {week:wi+1, dayIdx:di, label:'Deload', pct:w.pct, reps:w.reps, sets:w.sets, deload:true};
   const t = DUP_DAYS[d][di], x = w[t];
   return {week:wi+1, dayIdx:di, label:DUP_NAMES[t], pct:x.pct, reps:x.reps, sets:x.sets, deload:false};
@@ -382,8 +382,10 @@ function dpSuggest(last, lo, hi, inc) {
   if (minR < lo && last.x.feel === 'hard') return {kg:Math.max(0, top - inc), reps:lo};
   return {kg:top, reps:Math.min(hi, Math.max(lo, minR + 1))};
 }
+/* Studio-Profil: kleinster verfügbarer Gewichtsschritt je Gerätetyp, sonst Standard */
+function incOf(p, e) { const g = p.gym && p.gym[e.eq]; return g > 0 ? g : e.inc; }
 function exPlan(p, id, slot, pr, sessions) {
-  const e = EX[id], inc = e.inc, last = lastSession(sessions, id);
+  const e = EX[id], inc = incOf(p, e), last = lastSession(sessions, id);
   const lastTxt = last ? workSets(last.x).map(s => fmtSet(e, s)).join(' · ') : '';
   const base = {exId:id, slot, inc, lastTxt};
   const sets = pr.prep ? Math.max(1, pr.sets) : pr.deload ? 2 : 3;
@@ -402,6 +404,13 @@ function exPlan(p, id, slot, pr, sessions) {
     const adj = (p.adj && p.adj[id]) || 0;
     const kg = Math.max(minKg(e), roundTo(e1 * pr.pct, inc) + adj);
     const n = slot < 2 ? pr.sets : Math.min(pr.sets, 3);
+    /* Topsatz: allein trainierbar statt 1RM-Test. 3 schwere Wiederholungen kalibrieren das 1RM, danach Back-off-Sätze */
+    if (pr.top && e.main && n >= 2) {
+      const tk = Math.max(minKg(e), roundTo(e1 * pr.top.pct, inc) + adj), bk = Math.max(minKg(e), roundTo(e1 * pr.back.pct, inc) + adj);
+      const spec = [{kg:tk, reps:pr.top.reps, top:true}].concat(Array.from({length:n - 1}, () => ({kg:bk, reps:pr.back.reps})));
+      return {...base, mode:'pct', sets:n, reps:pr.top.reps, pct:pr.top.pct, kg:tk, e1, adj, spec,
+        desc:'Topsatz ' + pr.top.reps + ' Wdh. @ ' + fmt(pr.top.pct * 100) + ' %, dann ' + (n - 1) + ' × ' + pr.back.reps + ' @ ' + fmt(pr.back.pct * 100) + ' %'};
+    }
     return {...base, mode:'pct', sets:n, reps:pr.reps, pct:pr.pct, kg, e1, adj,
       desc:n + ' Sätze × ' + pr.reps + ' Wdh. @ ' + fmt(Math.round(pr.pct * 1000) / 10) + ' %'};
   }
@@ -426,6 +435,7 @@ function buildWorkout(p, sessions, n, planId, opt) {
   if (pr.deload && ids.length > 3) ids = ids.slice(0, Math.max(3, Math.ceil(ids.length * 0.7)));
   const items = ids.map((id, i) => exPlan(p, id, i, pr, sessions));
   items.forEach((it, i) => { it.ss = !!(plan.items[i] && plan.items[i].ss) && i < items.length - 1; }); /* Supersatz mit der nächsten Übung */
+  if (typeof applyVol === 'function') applyVol(p, items, pr); /* Volumensteuerung je Muskel */
   /* Wakeboard-Fokus: Griff-Finisher, außer der Plan fordert den Griff schon (Unterarm-, Hang- oder Halteübung) */
   const GRIP_HEAVY = ['hanging-leg','hanging-knee','handle-hold','toes-bar','klimmzuege','klimmzug-unter','klimmzug-neutral'];
   if (p.wake && !ids.some(id => EX[id].m === 'Unterarme' || GRIP_HEAVY.includes(id))) items.push(exPlan(p, GRIP_ROT[n % GRIP_ROT.length], 99, pr, sessions));
@@ -465,7 +475,7 @@ function applyProgress(p, sess) {
       } else if (cur) p.low[id] = 0;
     }
     if (x.plan && x.plan.mode === 'pct') {
-      let a = (p.adj && p.adj[id]) || 0; const inc = e.inc;
+      let a = (p.adj && p.adj[id]) || 0; const inc = incOf(p, e);
       if (x.feel === 'hard' || entryMiss(x)) a -= inc;
       else if (!changed && x.feel === 'easy' && entryHit(x)) a += inc;
       a = Math.max(-4 * inc, Math.min(4 * inc, a));

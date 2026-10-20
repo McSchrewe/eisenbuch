@@ -11,6 +11,7 @@ function targetShort(it) {
 }
 function targetLong(it) {
   const pl = it.plan;
+  if (pl.mode === 'pct' && pl.top) { const b = it.sets.find(q => !q.top && !q.warm); return '<b>Topsatz ' + fkg(pl.kg) + ' × ' + pl.reps + '</b>' + (b ? ' · dann ' + it.sets.filter(q => !q.top && !q.warm).length + ' × ' + b.reps + ' @ ' + fkg(b.kg) : '') + ' · 1RM ' + fkg(pl.e1); }
   if (pl.mode === 'pct') return '<b>' + fkg(pl.kg) + '</b> · ' + pl.sets + ' × ' + pl.reps + ' Wdh. · ' + fmt(Math.round(pl.pct * 1000) / 10) + ' % von ' + fkg(pl.e1);
   if (pl.mode === 'dp') return (pl.kg ? '<b>' + fkg(pl.kg) + '</b> · ' : '') + pl.sets + ' × ' + pl.rng[0] + '–' + pl.rng[1] + ' Wdh.' + (pl.first ? ' · Gewicht mit ca. 2 Wdh. Reserve wählen' : '');
   if (pl.mode === 'bw') return '<b>' + pl.sets + ' × ' + pl.rng[0] + '–' + pl.rng[1] + ' Wdh.</b>' + (pl.kg > 0 ? ' · +' + fkg(pl.kg) : '');
@@ -47,10 +48,10 @@ function vFocus(i) {
   /* Fotos und Anleitung nur auf Antippen der Figur, damit alles Wichtige ohne Scrollen auf den Bildschirm passt */
   const pics = S.ui.fpics ? exPics(it.exId) + exHowTo(it.exId) : '';
   let h = '<div class="fhead"><button class="figbtn" data-act="fpics" aria-expanded="' + !!S.ui.fpics + '" aria-label="Ausführung ' + (S.ui.fpics ? 'ausblenden' : 'zeigen') + '">' + avatar(e) + '<span class="figi">' + (S.ui.fpics ? '×' : 'i') + '</span></button><div class="exm"><b>' + esc(e.name) + '</b><small>Übung ' + (i + 1) + ' von ' + a.items.length + ' · ' + esc(e.m) + '</small></div></div>' + pics + (pa !== null ? '<p class="tag" style="display:inline-block;margin:0 0 6px">Supersatz mit ' + esc(EX[a.items[pa].exId].name) + '</p>' : '') +
-    '<p class="ftgt">' + targetLong(it) + '</p>' + (it.lastTxt ? '<p class="last">Letztes Mal: ' + esc(it.lastTxt) + '</p>' : '') + (S.p.exNotes[it.exId] ? '<p class="last">Notiz: ' + esc(S.p.exNotes[it.exId]) + '</p>' : '');
+    '<p class="ftgt">' + targetLong(it) + '</p>' + (s.top ? '<p class="tag" style="display:inline-block;margin:0 0 6px">Topsatz: 3 saubere Wdh., ca. 1 Wdh. Reserve. Allein nur mit Ablage oder Safety-Pins.</p>' : '') + (it.lastTxt ? '<p class="last">Letztes Mal: ' + esc(it.lastTxt) + '</p>' : '') + (S.p.exNotes[it.exId] ? '<p class="last">Notiz: ' + esc(S.p.exNotes[it.exId]) + '</p>' : '');
   /* Sätze als Leiste, aktueller Satz hervorgehoben */
   let n = 0;
-  h += '<div class="spills">' + it.sets.map((q, j) => { const lab = q.warm ? 'A' : ++n; return '<button class="spill' + (j === si ? ' cur' : '') + (q.done ? ' done' : '') + (q.warm ? ' warm' : '') + '" data-act="ws-sel" data-v="' + j + '"><b>' + lab + '</b><small class="num">' + (noKg ? '' : (q.kg != null ? fmt(q.kg) : '–') + '×') + (q.reps != null ? q.reps : '–') + '</small></button>'; }).join('') + '</div>';
+  h += '<div class="spills">' + it.sets.map((q, j) => { const lab = q.warm ? 'A' : q.top ? (++n, 'Top') : ++n; return '<button class="spill' + (j === si ? ' cur' : '') + (q.done ? ' done' : '') + (q.warm ? ' warm' : '') + '" data-act="ws-sel" data-v="' + j + '"><b>' + lab + '</b><small class="num">' + (noKg ? '' : (q.kg != null ? fmt(q.kg) : '–') + '×') + (q.reps != null ? q.reps : '–') + '</small></button>'; }).join('') + '</div>';
   h += '<div class="fbig"><div class="fset"><small>Satz</small><b class="num">' + (s.warm ? 'A' : wn) + '</b><small>/ ' + pg.all + '</small></div><div class="fsteps">' +
     (noKg ? '' : stepper(i, si, 'kg', mode === 'bw' ? 'Zusatz' : 'Gewicht', s.kg, 'kg', mode === 'bw' ? '0' : 'kg')) +
     stepper(i, si, 'reps', mode === 'time' ? 'Dauer' : 'Wdh.', s.reps, mode === 'time' ? 's' : '×', '0') + '</div></div>';

@@ -3,7 +3,7 @@
    dist/artifact.html – Web-Version für Claude */
 const fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..'), src = f => fs.readFileSync(path.join(root, 'src', f), 'utf8');
-const ORDER = ['logic.js', 'plans.js', 'ui1.js', 'grip.js', 'body.js', 'native.js', 'tricks.js', 'extras.js', 'records.js', 'views.js', 'charts.js', 'workout.js', 'ui3.js'];
+const ORDER = ['logic.js', 'plans.js', 'ui1.js', 'grip.js', 'body.js', 'native.js', 'tricks.js', 'extras.js', 'records.js', 'volume.js', 'views.js', 'charts.js', 'workout.js', 'ui3.js'];
 const js = ORDER.map(src).join('\n').replace(/^'use strict';$/gm, '');
 const css = src('style.css');
 const markup = '<main class="wrap" id="view"></main><nav id="tabs" aria-label="Bereiche" hidden></nav><section class="screen" id="screen" hidden></section><div class="rest" id="rest" hidden></div><div class="sheetwrap" id="sheetwrap" hidden></div><div id="toast" role="status" aria-live="polite"></div><div class="trophy" id="trophy" data-act="tro-x" hidden></div>';

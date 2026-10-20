@@ -53,12 +53,12 @@ r-fs270out|FS270 raus (Rail)|R|6|r-forward,b-fs180out|Aus dem Slide frontside 27
 grab-ollie|Ollie mit Grab|F|7|loaded-ollie,k-grab|Loaded Ollie mit kurzem Grab.
 ollie-shifty|Ollie Shifty|F|7|loaded-ollie,k-fs-shifty|Im Loaded Ollie das Board kurz quer drehen und vor der Landung zurück.
 ollie-bs180|Ollie BS180|F|7|ollie-fs180,surf-bs180|Backside Drehung in der Luft mit Handlepass.
-k-backroll|Backroll (Kicker)|K|7|k-straight-l|Erste Rolle: Heelside anfahren, Schulter fallen lassen, Blick über die Schulter. Erst mit Coach oder Video.
+k-backroll|Heelside Backroll (Kicker)|K|7|k-straight-l|Seitliche Rolle rückwärts von der Heelside (wie ein Rad rückwärts): Kante halten, hintere Schulter fallen lassen, Blick über die Schulter. Erst mit Coach oder Video.
 k-tantrum|Tantrum (Kicker)|K|7|k-straight-l|Rückwärtssalto von der Heelside-Kante: Schultern gerade lassen, Kante bis zur Lippe halten, Kopf führt nach hinten.
-k-tsbackroll|Toeside Backroll (Kicker)|K|7|k-backroll,toeside|Backroll aus der Toeside-Anfahrt, Schulter in Richtung Wasser fallen lassen.
+k-tsbackroll|Toeside Backroll (Kicker)|K|7|k-straight-l,toeside|Gerader Rückwärtssalto von der Toeside-Kante, wie auf dem Trampolin. Im Wakebook einfach „Back Roll“. Kante bis zur Lippe halten, hoch abspringen, Knie zur Brust, Kopf führt nach hinten.
 k-mexroll|Mexican Roll (Kicker)|K|7|k-straight-l|Heelside anfahren, Kopf und Körper beim Absprung nach vorn werfen. Wird oft mit dem Frontroll verwechselt.
 k-frontroll|Frontroll (Kicker)|K|7|k-backroll,toeside|Toeside anfahren, Kinn zur Brust, Kopf und Körper nach vorn werfen, Handle nah am Körper.
-k-rtr|Roll to Revert (Kicker)|K|7|k-backroll,surf-fs180|Backroll mit Frontside-180, Landung switch.
+k-rtr|Roll to Revert (Kicker)|K|7|k-tsbackroll,surf-fs180|Toeside Backroll mit Frontside-180, Landung switch.
 k-scarecrow|Scarecrow (Kicker)|K|7|k-frontroll,surf-fs180|Toeside Frontroll mit Frontside-180.
 k-frontflip|Front Flip (Kicker)|K|7|k-frontroll|Salto nach vorn, Tail kommt über den Kopf.
 r-press|Press auf dem Rail (Nose, Tail)|R|7|r-5050,wheelie|Gewicht auf Nose oder Tail drücken und halten.
@@ -66,8 +66,8 @@ r-ollie-on|Ollie on (50-50)|R|7|r-5050,loaded-ollie|Mit Ollie aufs Rail springen
 r-switchup|SwitchUp 90|R|7|r-forward|Auf dem Rail von 50-50 in einen Slide wechseln.
 r-bs180out|BS180 raus (Rail)|R|7|b-bs180,r-backward|Am Railende backside mit Handlepass rausdrehen.
 k-bs180|Kicker BS180|K|7|k-fs180-l,surf-bs180|Backside vom Kicker, Handle hinter dem Rücken übergeben.
-air-backroll|Air Backroll|A|7|loaded-ollie,k-backroll|Backroll aus der eigenen Kante, ohne Kicker. Zug laden, Kante bis zum Schluss halten.
-air-rtr|Air Roll to Revert|A|7|air-backroll,surf-fs180|Air Backroll mit Frontside-180, Landung switch.
+air-backroll|Air Backroll|A|7|loaded-ollie,k-tsbackroll|Toeside Backroll aus der eigenen Kante, ohne Kicker (Wakebook: Air Back Roll). Zug laden, Kante bis zum Schluss halten.
+air-rtr|Air Roll to Revert|A|7|air-backroll,surf-fs180|Air Backroll (Toeside) mit Frontside-180, Landung switch.
 ollie-360|Ollie BS360 (Handlepass)|F|8|ollie-bs180,surf-360|Volle Backside-Drehung im Ollie mit Handlepass.
 ollie-fs360|Ollie FS360 (Handlepass)|F|8|ollie-fs180,surf-360|Volle Frontside-Drehung im Ollie, Handlepass am Ende der Drehung.
 ollie-fs540|Ollie FS540|F|8|ollie-fs360|Eineinhalb Drehungen frontside im Ollie, Landung switch.
@@ -94,9 +94,9 @@ air-911|Air 911|A|9|air-raley|Air Raley mit Shifty: Board im gestreckten Raley q
 air-blindjudge|Air Blind Judge|A|9|air-raley,blind-ride|Air Raley mit Backside-180, Landung blind (Handle hinter dem Rücken).
 air-sbend|Air S-Bend|A|9|air-raley,surf-bs180|Air Raley mit Backside-360 als Ole: Handle über den Kopf statt übergeben.
 air-vulcan|Air Vulcan (S-Bend to Fakie)|A|9|air-sbend,surf-fs180|S-Bend mit zusätzlichem Frontside-180, Landung fakie.
-air-kgb|Air KGB|A|9|air-backroll,surf-bs180|Heelside Air Backroll mit Backside-360 als Ole.
+air-kgb|Air KGB|A|9|air-backroll,k-backroll,surf-bs180|Heelside Air Backroll mit Backside-360 als Ole.
 air-313|Air 313|A|9|air-raley,surf-360|Air Raley mit Handlepass und Frontside-360 (Raley-Mobe).
-air-backmobe|Air Back Mobe|A|9|air-backroll,surf-360|Heelside Air Backroll mit Handlepass und Frontside-360.
+air-backmobe|Air Back Mobe|A|9|air-backroll,k-backroll,surf-360|Heelside Air Backroll mit Handlepass und Frontside-360.
 air-belair|Bel Air (Air Tantrum)|A|9|air-backroll,k-tantrum|Whip-Trick: Rückwärtssalto aus der Heelside-Kante ohne Kicker. Zug voll laden, Schultern nicht aufdrehen.
 air-belair180|Bel Air FS180|A|9|air-belair,surf-fs180|Bel Air mit Frontside-180, Landung switch.
 air-benair|Ben Air|A|9|air-belair|Whip-Variante neben dem Bel Air (Wakebook Level 9). Technik vorab mit Coach oder Video klären.
@@ -120,7 +120,7 @@ const T_AP = {HS:['Heelside', 'auf den Fersen anfahren, Brust zum Lift'], TS:['T
 const T_MV = {
   br:['Backroll', 'Rolle rückwärts, seitlich gekippt (Off-Axis): Du fällst nach hinten über die Schulter, das Board zieht wie ein Rad seitlich über den Kopf.'],
   fr:['Frontroll', 'Rolle vorwärts, seitlich gekippt (Off-Axis): Kopf und Oberkörper werfen sich nach vorn Richtung Wasser, das Board zieht seitlich über den Kopf.'],
-  bf:['Rückwärtssalto', 'Gerader Salto rückwärts (On-Axis): Schultern bleiben gerade, kein seitliches Kippen, du drehst sauber über Kopf nach hinten.'],
+  bf:['Rückwärtssalto', 'Gerader Salto rückwärts (On-Axis) wie auf dem Trampolin: Schultern bleiben gerade, kein seitliches Kippen. Von der Heelside heißt er Tantrum, von der Toeside Toeside Backroll.'],
   ff:['Vorwärtssalto', 'Gerader Salto vorwärts (On-Axis): Das Tail kommt über den Kopf, ohne seitliches Kippen.'],
   ra:['Raley', 'Keine Rolle: Körper streckt sich waagerecht, das Board schwingt hinter dir nach oben über Kopfhöhe und zurück unter dich.'],
   dr:['Double Roll', 'Zwei Backrolls hintereinander in einem Sprung.']};
@@ -128,12 +128,12 @@ const T_LAND = {regular:['Regular', 'gleicher Fuß vorn wie beim Anfahren'], swi
 const T_INV_RAW = `
 k-backroll|HS|br||regular
 k-tantrum|HS|bf||regular
-k-tsbackroll|TS|br||regular
+k-tsbackroll|TS|bf||regular
 k-mexroll|HS|fr||regular
 k-frontroll|TS|fr||regular
 k-frontflip|HS|ff||regular
 k-raley|HS|ra||regular
-k-rtr|HS|br|FS180|switch
+k-rtr|TS|bf|FS180|switch
 k-halfcab|SH|br|FS180|regular
 k-scarecrow|TS|fr|FS180|switch
 k-elephant|TS|fr|FS180 + Rewind 180|fakie
@@ -145,8 +145,8 @@ k-313|HS|ra|FS360 Handlepass|regular
 k-whirly|HS|bf|BS360 Ole|regular
 k-glide|HS|ra|Method-Grab|regular
 k-mobe|HS|br|FS360 Handlepass|regular
-air-backroll|HS|br||regular
-air-rtr|HS|br|FS180|switch
+air-backroll|TS|bf||regular
+air-rtr|TS|bf|FS180|switch
 air-kgb|HS|br|BS360 Ole|regular
 air-backmobe|HS|br|FS360 Handlepass|regular
 air-frontroll|TS|fr||regular
@@ -198,9 +198,9 @@ function invSheet() {
     '<div class="scrollx"><table class="tbl invt"><thead><tr><th>Bewegung</th><th>Heelside</th><th>Toeside</th></tr></thead><tbody>' +
     ['br', 'fr', 'bf', 'ff', 'ra'].map(mv => '<tr><td><b>' + T_MV[mv][0] + '</b></td><td>' + cell(mv, 'HS') + '</td><td>' + cell(mv, 'TS') + '</td></tr>').join('') + '</tbody></table></div>' +
     '<p class="hint" style="margin-top:6px">(K) = vom Kicker, sonst aus der eigenen Kante (Air).</p>' +
-    '<h3 style="margin-top:12px">Merksätze</h3><div class="stack"><p><b>Backroll vs. Tantrum:</b> beide Heelside rückwärts. Der Backroll kippt seitlich über die Schulter, der Tantrum ist ein gerader Salto mit geraden Schultern.</p>' +
+    '<h3 style="margin-top:12px">Merksätze</h3><div class="stack"><p><b>Heelside Backroll vs. Tantrum:</b> beide Heelside rückwärts. Der Backroll kippt seitlich über die Schulter (Rad rückwärts), der Tantrum ist ein gerader Salto mit geraden Schultern.</p>' +
     '<p><b>Frontroll vs. Mexican Roll:</b> gleiche Bewegung nach vorn, aber Frontroll von der Toeside-, Mexican Roll von der Heelside-Kante.</p>' +
-    '<p><b>Toeside Backroll vs. Frontroll:</b> gleiche Toeside-Kante, aber der Backroll kippt nach hinten, der Frontroll nach vorn Richtung Wasser.</p>' +
+    '<p><b>Toeside Backroll = „Toeside Tantrum“:</b> beides ist ein gerader Rückwärtssalto, nur von der anderen Kante. Der Name „Backroll“ täuscht, gerollt wird erst beim Heelside Backroll.</p><p><b>Toeside Backroll vs. Frontroll:</b> gleiche Toeside-Kante, aber der Backroll geht als Salto nach hinten, der Frontroll nach vorn Richtung Wasser.</p>' +
     '<p><b>Frontroll vs. Front Flip:</b> Frontroll seitlich gekippt, Front Flip gerade über Nose und Tail.</p>' +
     '<p><b>Raley-Familie:</b> Krypt (+FS180, switch), Blind Judge (+BS180, blind), 911 (+Shifty), S-Bend (+BS360 Ole), 313 (+FS360 mit Handlepass).</p></div>';
   const groups = {};
@@ -257,13 +257,13 @@ function nextTricks(n) {
 function stPill(id, k) { const s = tSt(id, k), lk = k === 'w' && !s && !preOkW(TR[id]); return '<button class="tst2 s' + s + (lk ? ' lk' : '') + '" data-act="tr-cycle" data-v="' + id + ':' + k + '" aria-label="' + STANCE[k] + ' ' + T_STAT[s][0] + '"><em>' + (k === 's' ? 'Reg' : 'Sw') + '</em>' + T_SHORT[s] + '</button>'; }
 function trickRow(t) {
   const ar = T_AREAS[t.a], ok = preOk(t), s = tSt(t.id, 's');
-  return '<div class="trow"><span class="av" style="--c:' + ar[1] + '">' + t.lvl + '</span><button class="exm" data-act="tr-open" data-v="' + t.id + '"><b>' + esc(t.name) + '</b><small>' + ar[0] + ' · Level ' + t.lvl + (ok || s ? '' : ' · Voraussetzung fehlt') + '</small></button>' +
+  return '<div class="trow"><span class="av" style="--c:' + ar[1] + '">' + t.lvl + '</span><button class="exm" data-act="tr-open" data-v="' + t.id + '"><b>' + esc(t.name) + '</b><small>' + ar[0] + ' · Level ' + t.lvl + (ok || s ? '' : ' · Voraussetzung fehlt') + (tRate(t.id, 's', 3) ? ' · ' + rateTxt(tRate(t.id, 's', 3)) : '') + '</small></button>' +
     '<span class="tstp">' + stPill(t.id, 's') + stPill(t.id, 'w') + '</span></div>';
 }
 /* Zeile in „Als Nächstes“: genau die empfohlene Stance */
 function nextRow(it) {
   const t = it.t, k = it.k, s = tSt(t.id, k), ar = T_AREAS[t.a];
-  return '<div class="trow"><span class="av" style="--c:' + ar[1] + '">' + t.lvl + '</span><button class="exm" data-act="tr-open" data-v="' + t.id + '"><b>' + esc(t.name) + (k === 'w' ? ' <span class="swtag">Switch</span>' : '') + '</b><small>' + ar[0] + ' · Level ' + (k === 'w' ? swl(t) : t.lvl) + (k === 'w' && swl(t) <= riderStats().lvl ? ' · schließt Level ab' : '') + '</small></button>' +
+  return '<div class="trow"><span class="av" style="--c:' + ar[1] + '">' + t.lvl + '</span><button class="exm" data-act="tr-open" data-v="' + t.id + '"><b>' + esc(t.name) + (k === 'w' ? ' <span class="swtag">Switch</span>' : '') + '</b><small>' + ar[0] + ' · Level ' + (k === 'w' ? swl(t) : t.lvl) + (k === 'w' && swl(t) <= riderStats().lvl ? ' · schließt Level ab' : '') + (tRate(t.id, k, 3) ? ' · ' + rateTxt(tRate(t.id, k, 3)) : '') + '</small></button>' +
     '<button class="tst s' + s + '" data-act="tr-cycle" data-v="' + t.id + ':' + k + '">' + T_STAT[s][0] + '</button></div>';
 }
 function vWake() {
@@ -294,13 +294,13 @@ function vWake() {
 function trickSheet(id) {
   const t = TR[id], ar = T_AREAS[t.a], st = (S.p.tricks && S.p.tricks[id]) || {};
   const ses = S.wake.filter(w => (w.tricks || []).some(x => x.id === id));
-  const okCount = k => S.wake.reduce((a, w) => a + (w.tricks || []).filter(x => x.id === id && x.ok && (x.k || 's') === k).length, 0);
+  const rateRow = k => { const r = tRate(id, k, 3); return r ? STANCE[k] + ' ' + rateTxt(r) : ''; };
   const statusRow = k => '<p class="lab" style="margin-top:10px">' + STANCE[k] + '</p><div class="chips">' + T_STAT.map((x, i) => '<button class="chip" data-act="tr-set" data-v="' + id + ':' + i + ':' + k + '" aria-pressed="' + (tSt(id, k) === i) + '">' + x[0] + '</button>').join('') + '</div>';
   return '<p class="eyebrow">' + ar[0] + ' · Level ' + t.lvl + '</p><h2>' + esc(t.name) + '</h2><p>' + esc(t.tip) + '</p>' + invCard(id) +
     (t.pre.length ? '<h3 style="margin-top:12px">Voraussetzungen (Regular)</h3><div class="list">' + t.pre.map(p => { const q = TR[p], qs = tSt(p, 's'); return '<button class="exitem" data-act="tr-open" data-v="' + p + '"><span class="av" style="--c:' + T_AREAS[q.a][1] + '">' + q.lvl + '</span><span class="exm"><b>' + esc(q.name) + '</b><small>' + T_STAT[qs][0] + '</small></span>' + (qs >= 2 ? I(ICONS.check, 'i s') : '') + '</button>'; }).join('') + '</div>' : '') +
     '<h3 style="margin-top:12px">Status</h3>' + statusRow('s') + statusRow('w') +
     (st.first || st.fw ? '<p class="hint" style="margin-top:8px">' + (st.first ? 'Regular erstmals gestanden: ' + esc(dshort(st.first)) : '') + (st.first && st.fw ? ' · ' : '') + (st.fw ? 'Switch erstmals gestanden: ' + esc(dshort(st.fw)) : '') + '</p>' : '') +
-    (ses.length ? '<p class="sub" style="margin-top:8px">In ' + ses.length + ' Session' + (ses.length === 1 ? '' : 's') + ' geübt · Regular ' + okCount('s') + '× gelandet, Switch ' + okCount('w') + '×.</p>' : '') +
+    (ses.length ? '<p class="sub" style="margin-top:8px">In ' + ses.length + ' Session' + (ses.length === 1 ? '' : 's') + ' geübt. Landequote der letzten 3 Sessions: ' + [rateRow('s'), rateRow('w')].filter(Boolean).join(' · ') + '.</p>' : '') +
     '<label class="lab" for="tr-note">Notiz</label><textarea id="tr-note" placeholder="z. B. Kante länger halten, Handle tiefer">' + esc(st.note || '') + '</textarea><button class="btn sm ghost" style="margin-top:6px" data-act="tr-note" data-v="' + id + '">Notiz speichern</button>' +
     '<p style="margin-top:14px"><a class="link" href="https://www.youtube.com/results?search_query=' + encodeURIComponent('wakeboard ' + t.name.replace(/\(.*\)/, '') + ' tutorial') + '" target="_blank" rel="noopener">Tutorial-Videos auf YouTube suchen</a></p>';
 }
@@ -316,49 +316,90 @@ function setTrick(id, s, k) {
   saveProfile();
 }
 
-/* ----- Wake-Sessions ----- */
-const W_SPOTS = ['Cable (Lift)', '2-Mast-Anlage', 'Boot', 'Winch', 'Sonstiges'];
+/* ----- Wake-Sessions mit Versuchen und Landequote ----- */
+const W_SPOTS = ['Langenfeld (Cable)', 'Cable (andere Anlage)', '2-Mast-Anlage', 'Boot', 'Winch', 'Sonstiges'];
 function saveWake(w) { lsSave(); Cloud.put('wake', w.id, w); }
+/* Ältere Einträge kannten nur geübt/gelandet: zählt als 1 Versuch */
+function entA(x) { return x.a != null ? x.a : 1; }
+function entL(x) { return x.l != null ? x.l : (x.ok ? 1 : 0); }
+/* Landequote einer Stance über die letzten n Sessions mit diesem Trick */
+function tRate(id, k, n) {
+  const ses = S.wake.filter(w => (w.tricks || []).some(x => x.id === id && (x.k || 's') === k)).sort((a, b) => a.date < b.date ? 1 : -1).slice(0, n || 3);
+  let a = 0, l = 0; const per = [];
+  ses.forEach(w => { let wa = 0, wl = 0; w.tricks.filter(x => x.id === id && (x.k || 's') === k).forEach(x => { wa += entA(x); wl += entL(x); }); a += wa; l += wl; per.push(wa ? wl / wa : 0); });
+  if (!a) return null;
+  const trend = per.length >= 2 ? per[0] - per.slice(1).reduce((x, y) => x + y, 0) / (per.length - 1) : 0;
+  return {a, l, p:Math.round(l / a * 100), n:ses.length, trend};
+}
+function rateTxt(r) { return r ? r.p + ' % (' + r.l + '/' + r.a + ')' + (r.trend > 0.1 ? ' ↑' : r.trend < -0.1 ? ' ↓' : '') : ''; }
+/* „Sitzt“-Regel: mindestens 80 % über mindestens 10 Versuche in den letzten 2 Sessions */
+function sitztReady(id, k) { const r = tRate(id, k, 2); return r && r.n >= 2 && r.a >= 10 && r.p >= 80; }
 function selOf(f, id) { return f.sel[id] || (f.sel[id] = {}); }
+function newWf() {
+  const f = {date:todayStr(), spot:(S.p.wakeSpot || W_SPOTS[0]), min:'', laps:'', sel:{}, note:'', st:'s', hist:[]};
+  (S.p.wakeGoals || []).forEach(g => { if (TR[g.id]) selOf(f, g.id)[g.k] = {a:0, l:0}; }); /* Ziele stehen schon bereit */
+  return f;
+}
+function goalsCard() {
+  const goals = (S.p.wakeGoals || []).filter(g => TR[g.id]), has = (id, k) => goals.some(g => g.id === id && g.k === k);
+  const cand = nextTricks(10).map(x => ({id:x.t.id, k:x.k})).concat(goals).filter((x, i, arr) => arr.findIndex(y => y.id === x.id && y.k === x.k) === i);
+  return '<div class="card"><h2>Ziele für die nächste Session</h2><p class="sub">Bis zu 3 Tricks antippen. Sie stehen beim Eintragen schon bereit.</p><div class="chips" style="margin-top:8px">' +
+    cand.map(x => '<button class="chip' + (has(x.id, x.k) ? ' ok' : '') + '" data-act="wg-tog" data-v="' + x.id + ':' + x.k + '" aria-pressed="' + has(x.id, x.k) + '">' + esc(TR[x.id].name) + (x.k === 'w' ? ' · Sw' : '') + '</button>').join('') + '</div>' +
+    '<label class="lab" for="wg-note">Notiz für nächstes Mal</label><input type="text" id="wg-note" data-in="wg" value="' + esc(S.p.wakeNote || '') + '" placeholder="z. B. Kante länger halten, Blick zum Boxende">' +
+    '<button class="btn ghost wide" style="margin-top:10px" data-act="wg-send"' + (goals.length || S.p.wakeNote ? '' : ' disabled') + '>Ziele aufs Handy und die Uhr schicken</button>' +
+    '<p class="hint" style="margin-top:6px">Erscheint als Benachrichtigung; eine verbundene Smartwatch zeigt sie auch, wenn das Handy später außer Reichweite ist.</p></div>';
+}
+function cntRow(f, id, k) {
+  const c = f.sel[id][k], pct = c.a ? Math.round(c.l / c.a * 100) : null, r = tRate(id, k, 3);
+  return '<div class="cnt"><div class="cnt-t"><b>' + esc(TR[id].name) + (k === 'w' ? ' <span class="swtag">Switch</span>' : '') + '</b><small>' + (c.a ? c.l + '/' + c.a + ' gelandet · ' + pct + ' %' : 'noch kein Versuch') + (r ? ' · bisher ' + r.p + ' %' : '') + '</small></div>' +
+    '<div class="cnt-b"><button class="btn sm ghost" data-act="ws-miss" data-v="' + id + ':' + k + '">✗ Versuch</button><button class="btn sm" data-act="ws-land" data-v="' + id + ':' + k + '">✓ Gelandet</button><button class="ic s" data-act="ws-undo" data-v="' + id + ':' + k + '" aria-label="Letzten Versuch zurücknehmen"' + (c.a ? '' : ' disabled') + '>↺</button></div></div>';
+}
 function vWakeSessions() {
-  const f = S.ui.wf2 || (S.ui.wf2 = {date:todayStr(), spot:W_SPOTS[0], min:'', laps:'', sel:{}, note:'', st:'s'});
-  if (!f.st) f.st = 's';
-  const k = f.st;
+  let f = S.ui.wf2; if (!f || f.hist === undefined) f = S.ui.wf2 = newWf();
+  const k = f.st || 's';
   const nx = nextTricks(30);
-  const cand = TRICKS.filter(t => tSt(t.id, k) === 1 || nx.some(x => x.t === t && x.k === k) || (f.sel[t.id] && f.sel[t.id][k] !== undefined)).slice(0, 16);
-  let h = '<div class="card"><h2>Session eintragen</h2><div class="pair"><div><label class="lab" for="ws-date">Datum</label><input type="date" id="ws-date" data-in="ws" data-f="date" value="' + esc(f.date) + '"></div>' +
+  const cand = TRICKS.filter(t => tSt(t.id, k) === 1 || nx.some(x => x.t === t && x.k === k)).filter(t => !(f.sel[t.id] && f.sel[t.id][k])).slice(0, 12);
+  const rows = []; Object.keys(f.sel).forEach(id => ['s', 'w'].forEach(kk => { if (f.sel[id][kk]) rows.push([id, kk]); }));
+  const tot = rows.reduce((o, [id, kk]) => { o.a += f.sel[id][kk].a; o.l += f.sel[id][kk].l; return o; }, {a:0, l:0});
+  let h = goalsCard();
+  if (S.p.wakeNote) h += '<p class="tag" style="margin:0 0 10px">Notiz: ' + esc(S.p.wakeNote) + '</p>';
+  h += '<div class="card"><h2>Session eintragen</h2><div class="pair"><div><label class="lab" for="ws-date">Datum</label><input type="date" id="ws-date" data-in="ws" data-f="date" value="' + esc(f.date) + '"></div>' +
     '<div><label class="lab" for="ws-spot">Ort</label><select id="ws-spot" data-in="ws" data-f="spot">' + W_SPOTS.map(x => '<option' + (x === f.spot ? ' selected' : '') + '>' + x + '</option>').join('') + '</select></div>' +
     '<div><label class="lab" for="ws-min">Fahrzeit (min)</label><input type="text" inputmode="numeric" id="ws-min" data-in="ws" data-f="min" value="' + esc(f.min) + '" placeholder="z. B. 60"></div>' +
     '<div><label class="lab" for="ws-laps">Runden (optional)</label><input type="text" inputmode="numeric" id="ws-laps" data-in="ws" data-f="laps" value="' + esc(f.laps) + '"></div></div>' +
-    '<label class="lab">Stance</label><div class="segc" role="group">' + Object.entries(STANCE).map(([kk, nm]) => '<button data-act="ws-st" data-v="' + kk + '" aria-pressed="' + (k === kk) + '">' + nm + '</button>').join('') + '</div>' +
-    '<label class="lab" style="margin-top:10px">Geübte Tricks in ' + STANCE[k] + ' (einmal tippen: geübt, zweimal: gelandet)</label><div class="chips">' + cand.map(t => { const v = selOf(f, t.id)[k]; return '<button class="chip' + (v === 'ok' ? ' ok' : '') + '" data-act="ws-trick" data-v="' + t.id + '" aria-pressed="' + (v !== undefined) + '">' + (v === 'ok' ? '✓ ' : '') + esc(t.name) + '</button>'; }).join('') +
-    '<button class="chip" data-act="ws-more">+ weiterer Trick</button></div>' +
-    '<label class="lab" for="ws-note">Notiz</label><input type="text" id="ws-note" data-in="ws" data-f="note" value="' + esc(f.note) + '" placeholder="Wind, Wasser, Gefühl, Stürze">' +
-    '<button class="btn wide" style="margin-top:12px" data-act="ws-save">Session speichern</button><p class="hint" style="margin-top:6px">Gelandete Tricks werden automatisch auf „Gestanden“ gesetzt (in der jeweiligen Stance). Nach Landungen an 3 verschiedenen Tagen schlägt die App „Sitzt“ vor.</p></div>';
+    (rows.length ? '<h3 style="margin-top:12px">Versuche' + (tot.a ? ' · ' + tot.l + '/' + tot.a + ' gelandet (' + Math.round(tot.l / tot.a * 100) + ' %)' : '') + '</h3><div class="cnts">' + rows.map(([id, kk]) => cntRow(f, id, kk)).join('') + '</div>' : '') +
+    '<label class="lab" style="margin-top:12px">Trick hinzufügen</label><div class="segc" role="group">' + Object.entries(STANCE).map(([kk, nm]) => '<button data-act="ws-st" data-v="' + kk + '" aria-pressed="' + (k === kk) + '">' + nm + '</button>').join('') + '</div>' +
+    '<div class="chips" style="margin-top:8px">' + cand.map(t => '<button class="chip" data-act="ws-trick" data-v="' + t.id + '">+ ' + esc(t.name) + '</button>').join('') + '<button class="chip" data-act="ws-more">+ weiterer Trick</button></div>' +
+    '<label class="lab" for="ws-note">Notiz</label><input type="text" id="ws-note" data-in="ws" data-f="note" value="' + esc(f.note) + '" placeholder="Gefühl, Stürze, was geklappt hat">' +
+    '<button class="btn wide" style="margin-top:12px" data-act="ws-save">Session speichern</button><p class="hint" style="margin-top:6px">Nach jedem Versuch ✓ oder ✗ tippen, auch nachträglich am Steg. Ein gelandeter Versuch setzt den Trick auf „Gestanden“. „Sitzt“ schlägt die App ab 80 % über mindestens 10 Versuche in 2 Sessions vor.</p></div>';
   if (!S.wake.length) return h + '<div class="empty">Noch keine Session. Nach dem ersten Tag am Wasser hier eintragen.</div>';
   const mins = S.wake.reduce((a, w) => a + (w.min || 0), 0), yr = todayStr().slice(0, 4), thisY = S.wake.filter(w => w.date.startsWith(yr));
-  h += '<div class="stats tiles"><div><small>Sessions ' + yr + '</small><b>' + thisY.length + '</b></div><div><small>Fahrzeit gesamt</small><b>' + (mins >= 60 ? fmt(Math.round(mins / 6) / 10) + ' h' : mins + ' min') + '</b></div><div><small>Gelandet</small><b>' + S.wake.reduce((a, w) => a + (w.tricks || []).filter(x => x.ok).length, 0) + '</b></div></div>';
+  const allA = S.wake.reduce((a, w) => a + (w.tricks || []).reduce((b, x) => b + entA(x), 0), 0), allL = S.wake.reduce((a, w) => a + (w.tricks || []).reduce((b, x) => b + entL(x), 0), 0);
+  h += '<div class="stats tiles"><div><small>Sessions ' + yr + '</small><b>' + thisY.length + '</b></div><div><small>Fahrzeit gesamt</small><b>' + (mins >= 60 ? fmt(Math.round(mins / 6) / 10) + ' h' : mins + ' min') + '</b></div><div><small>Landequote</small><b>' + (allA ? Math.round(allL / allA * 100) + ' %' : '–') + '</b></div></div>';
   return h + '<div class="list">' + S.wake.slice().sort((a, b) => a.date < b.date ? 1 : -1).map(wakeBtn).join('') + '</div>';
 }
 function wakeBtn(w) {
-  const ok = (w.tricks || []).filter(x => x.ok).length;
-  return '<button class="prow" data-act="wk-open" data-v="' + w.id + '"><span class="dayc date" style="--c:#14B8A6"><b>' + parseD(w.date).getDate() + '</b><small>' + DAYS[wdOf(w.date)] + '</small></span><span class="pt"><b>' + esc(w.spot) + (w.min ? ' · ' + w.min + ' min' : '') + '</b><small>' + (w.tricks || []).length + ' Tricks geübt · ' + ok + ' gelandet' + (w.note ? ' · ' + esc(w.note) : '') + '</small></span>' + I(ICONS.wave, 'i s ago') + '</button>';
+  const a = (w.tricks || []).reduce((b, x) => b + entA(x), 0), l = (w.tricks || []).reduce((b, x) => b + entL(x), 0);
+  return '<button class="prow" data-act="wk-open" data-v="' + w.id + '"><span class="dayc date" style="--c:#14B8A6"><b>' + parseD(w.date).getDate() + '</b><small>' + DAYS[wdOf(w.date)] + '</small></span><span class="pt"><b>' + esc(w.spot) + (w.min ? ' · ' + w.min + ' min' : '') + '</b><small>' + (w.tricks || []).length + ' Tricks · ' + l + '/' + a + ' gelandet' + (a ? ' (' + Math.round(l / a * 100) + ' %)' : '') + (w.note ? ' · ' + esc(w.note) : '') + '</small></span>' + I(ICONS.wave, 'i s ago') + '</button>';
 }
 function wakeSave() {
-  const f = S.ui.wf2;
-  const entries = [];
-  Object.keys(f.sel).forEach(id => { ['s', 'w'].forEach(k => { const v = f.sel[id][k]; if (v !== undefined) entries.push({id, k, ok:v === 'ok'}); }); });
-  if (!(parseNum(f.min) > 0) && !entries.length) { toast('Fahrzeit oder mindestens einen Trick eintragen.'); return; }
+  const f = S.ui.wf2, entries = [];
+  Object.keys(f.sel).forEach(id => ['s', 'w'].forEach(k => { const c = f.sel[id][k]; if (c && c.a > 0) entries.push({id, k, a:c.a, l:c.l, ok:c.l > 0}); }));
+  if (!(parseNum(f.min) > 0) && !entries.length) { toast('Fahrzeit oder mindestens einen Versuch eintragen.'); return; }
   const w = {id:uid('w'), date:f.date || todayStr(), spot:f.spot, min:Math.round(parseNum(f.min) || 0), laps:Math.round(parseNum(f.laps) || 0) || null, tricks:entries, note:(f.note || '').trim()};
-  S.wake.push(w); saveWake(w);
+  S.wake.push(w); saveWake(w); S.p.wakeSpot = f.spot;
   const sug = [];
   entries.forEach(x => {
-    if (x.ok && tSt(x.id, x.k) < 2) setTrick(x.id, 2, x.k);
-    else if (!x.ok && tSt(x.id, x.k) === 0) setTrick(x.id, 1, x.k);
-    const days = new Set(S.wake.filter(q => (q.tricks || []).some(y => y.id === x.id && y.ok && (y.k || 's') === x.k)).map(q => q.date));
-    if (x.ok && days.size >= 3 && tSt(x.id, x.k) === 2) sug.push({id:x.id, k:x.k});
+    if (x.l > 0 && tSt(x.id, x.k) < 2) setTrick(x.id, 2, x.k);
+    else if (!x.l && tSt(x.id, x.k) === 0) setTrick(x.id, 1, x.k);
+    if (tSt(x.id, x.k) === 2 && sitztReady(x.id, x.k)) sug.push({id:x.id, k:x.k});
   });
+  const goals = (S.p.wakeGoals || []), hit = goals.filter(g => entries.some(x => x.id === g.id && x.k === g.k && x.l > 0)).length;
+  if (goals.length) { w.goalN = goals.length; w.goalHit = hit; saveWake(w); }
+  saveProfile();
   S.ui.wf2 = null;
-  if (sug.length) { S.ui.sheet = {t:'trsug', sug}; }
-  render(); toast('Session gespeichert.');
+  const A = entries.reduce((a, x) => a + x.a, 0), L = entries.reduce((a, x) => a + x.l, 0);
+  if (sug.length) S.ui.sheet = {t:'trsug', sug};
+  render(); toast('Session gespeichert' + (A ? ': ' + L + '/' + A + ' gelandet' : '') + (goals.length ? ' · Ziele ' + hit + '/' + goals.length : '') + '.');
+  checkBadges();
 }

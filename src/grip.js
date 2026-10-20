@@ -31,6 +31,10 @@ function gripDue() {
   return {due:d <= 0, days:d, last:l};
 }
 function seasonWeeks() { const s = S.p.season; if (!s) return null; return Math.ceil(daysBetween(todayStr(), s) / 7); }
+/* Wake-Saison: vom Saisonstart bis Saisonende (Standard 30.09.). Mit Saison-Pause ruht das Krafttraining. */
+function seasonEnd() { const st = S.p && S.p.season; if (S.p && S.p.seasonEnd) return S.p.seasonEnd; if (!st) return null; const e = st.slice(0, 4) + '-09-30'; return e >= st ? e : (+st.slice(0, 4) + 1) + '-09-30'; }
+function inSeason(d) { const st = S.p && S.p.season, en = seasonEnd(); d = d || todayStr(); return !!(st && en && d >= st && d <= en); }
+function inSeasonPause(d) { return inSeason(d) && S.p.seasonPause !== false; }
 function seasonPhase() {
   const w = seasonWeeks(); if (w === null) return null;
   if (w <= 0) return {n:'Saison', t:'Kraft erhalten, 1–2 Einheiten pro Woche, Griff frisch halten für das Wasser.'};
@@ -135,7 +139,7 @@ function gtSave() {
     if (T.load) { const kg = parseNum($('#gt-kg').value); if (!(kg > 0)) { toast('Gewicht pro Hand eintragen.'); return; } e.kg = kg; S.ui.lastCarryKg = kg; }
   }
   const prev = gripHist(type); const pv = prev.length ? gripVal(prev[prev.length - 1]) : null;
-  S.grip.push(e); saveGrip(e); g.res.push({type, v:gripVal(e), prev:pv, best:prev.length ? Math.max(...prev.map(gripVal)) : null});
+  S.grip.push(e); saveGrip(e); setTimeout(() => checkBadges(), 400); g.res.push({type, v:gripVal(e), prev:pv, best:prev.length ? Math.max(...prev.map(gripVal)) : null});
   g.i++;
   if (g.i >= g.types.length) { g.st = 'end'; }
   else { g.st = 'pause'; g.pend = Date.now() + 180000; clearInterval(GT.timer); GT.timer = setInterval(gtTick, 250); }

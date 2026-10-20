@@ -16,8 +16,12 @@ const Nat = {
     const LN = this.P.LN;
     LN.createChannel({id:'rest', name:'Pausen-Timer', description:'Signal am Ende der Satzpause', importance:5, visibility:1, vibration:true}).catch(() => {});
     LN.createChannel({id:'remind', name:'Trainings-Erinnerungen', description:'Erinnerung an geplante Einheiten und Griff-Tests', importance:4, visibility:1, vibration:true}).catch(() => {});
+    LN.registerActionTypes({types:[{id:'set', actions:[{id:'done', title:'✓ Geschafft'}]}]}).catch(() => {});
     LN.addListener('localNotificationActionPerformed', a => {
-      const go = a && a.notification && a.notification.extra && a.notification.extra.go;
+      const ex = (a && a.notification && a.notification.extra) || {};
+      /* „✓ Geschafft“ auf Handy oder Uhr: den angekündigten Satz abhaken */
+      if (a && a.actionId === 'done' && S.active && ex.i != null) { const it = S.active.items[ex.i], st = it && it.sets[ex.s]; if (st && !st.done) { ACT['set-done'](null, {dataset:{i:String(ex.i), s:String(ex.s)}}); toast('Satz abgehakt: ' + EX[it.exId].name); return; } }
+      const go = ex.go;
       if (go && S.p && S.p.done) { S.tab = go; if (go === 'wake') S.ui.wseg = 'grip'; if (S.active) S.ui.woMin = false; render(); }
     });
     this.P.APP.addListener('backButton', () => onBack());
@@ -27,18 +31,33 @@ const Nat = {
     if (!NATIVE || !this.P) return false;
     try { let s = await this.P.LN.checkPermissions(); if (s.display !== 'granted') s = await this.P.LN.requestPermissions(); return s.display === 'granted'; } catch (e) { return false; }
   },
-  /* App geht in den Hintergrund oder Bildschirm wird gesperrt: Pausen-Ende als Benachrichtigung planen */
-  bg() {
-    this.flush();
-    if (S.rest && S.active && S.rest.end > Date.now() + 1500) {
-      const it = S.active.items.find(x => x.sets.some(s => !s.done)), nm = it ? EX[it.exId].name : 'nächste Übung';
-      this.P.LN.schedule({notifications:[{id:9001, title:'Pause vorbei', body:'Weiter mit: ' + nm, channelId:'rest', schedule:{at:new Date(S.rest.end), allowWhileIdle:true}, extra:{go:'train'}}]}).catch(() => {});
-    }
-  },
-  fg() {
+  /* Pausen-Ende als Benachrichtigung mit dem nächsten Satz. Smartwatches (z. B. Garmin) spiegeln sie und vibrieren.
+     Mit Uhr-Modus immer, sonst nur wenn die App im Hintergrund ist. */
+  restSchedule(force) {
+    if (!NATIVE || !this.P) return;
     this.P.LN.cancel({notifications:[{id:9001}]}).catch(() => {});
+    if (!S.rest || !S.active || S.rest.end <= Date.now() + 1500) return;
+    if (!force && S.p.watch === false) return;
+    const a = S.active, cand = S.ui.wf != null ? [S.ui.wf] : []; a.items.forEach((x, k) => cand.push(k));
+    let i = -1, j = -1; for (const k of cand) { const jj = a.items[k] ? a.items[k].sets.findIndex(q => !q.done) : -1; if (jj >= 0) { i = k; j = jj; break; } }
+    if (i < 0) return;
+    const it = a.items[i], e = EX[it.exId], st = it.sets[j], nWork = it.sets.filter(q => !q.warm).length, idx = it.sets.slice(0, j + 1).filter(q => !q.warm).length;
+    const what = (st.kg ? fmt(st.kg) + ' kg × ' : '') + (st.reps || '') + (it.plan.mode === 'time' ? ' s' : ' Wdh.');
+    this.P.LN.schedule({notifications:[{id:9001, title:'Pause vorbei · ' + e.name, body:(st.warm ? 'Aufwärmsatz' : (st.top ? 'Topsatz ' : 'Satz ') + idx + '/' + nWork) + ': ' + what, channelId:'rest', actionTypeId:'set', schedule:{at:new Date(S.rest.end), allowWhileIdle:true}, extra:{go:'train', i, s:j}}]}).catch(() => {});
+  },
+  /* App geht in den Hintergrund oder Bildschirm wird gesperrt */
+  bg() { this.flush(); this.restSchedule(true); },
+  fg() {
+    if (S.p && S.p.watch === false) this.P.LN.cancel({notifications:[{id:9001}]}).catch(() => {});
     if (S.rest && Date.now() >= S.rest.end) S.rest = null; /* Signal kam schon als Benachrichtigung */
     renderRest(); this.reschedule();
+  },
+  /* Sofort-Benachrichtigung (z. B. Wake-Ziele); Smartwatches spiegeln sie */
+  notifyNow(id, title, text) {
+    if (!NATIVE || !this.P) return false;
+    const first = text.split('\n')[0];
+    this.P.LN.schedule({notifications:[{id, title, body:first, largeBody:text, channelId:'remind', extra:{go:'wake'}}]}).catch(() => {});
+    return true;
   },
   vib(ms) { if (NATIVE && this.P) this.P.HA.vibrate({duration:ms || 200}).catch(() => {}); },
   async share(name, text) {
@@ -63,10 +82,12 @@ const Nat = {
       if (old.length) await LN.cancel({notifications:old});
     } catch (e) {}
     const r = S.p.remind; if (!r || !r.on) return;
+    const paused = typeof inSeasonPause === 'function' && inSeasonPause();
     const list = [], total = blockSessions(S.p), hm = (S.p.time || '18:00').split(':').map(Number);
     let n = S.p.block.n;
     for (let i = 0; i < 28 && list.length < 20; i++) {
       const d = addDays(todayStr(), i), pl = planForDate(S.p, d); if (!pl) continue;
+      if (paused || (typeof inSeasonPause === 'function' && inSeasonPause(d))) continue; /* Wake-Saison: keine Gym-Erinnerungen */
       if (i === 0 && S.sessions.some(s => s.date === d)) continue;
       const at = parseD(d); at.setHours(hm[0], hm[1], 0, 0); at.setMinutes(at.getMinutes() - (r.lead || 0));
       if (at.getTime() < Date.now() + 60000) continue;

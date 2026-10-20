@@ -118,6 +118,7 @@ function prepLine(w) {
 function vTrain() {
   const p = S.p, pg = activeProgram(p), M = MODELS[p.model], total = blockSessions(p), n = p.block.n;
   let h = head('Training', esc(dlong(todayStr())), '<button class="ic" data-act="tab" data-v="more" aria-label="Mehr und Einstellungen">' + I(ICONS.gear) + '</button>') + '<button class="pill" data-act="prog-open"><small>Programm</small><span>' + esc(pg.name) + '</span>' + I(ICONS.chev, 'i s') + '</button>';
+  if (inSeasonPause()) h += '<div class="card prepc"><b>Wake-Saison bis ' + esc(dshort(seasonEnd())) + '</b><p class="sub" style="margin-top:4px">Das Krafttraining ruht, Trainings-Erinnerungen sind aus. Ein Training kannst du trotzdem jederzeit starten. Nach der Saison schlägt die App eine Einstiegsphase vor.</p><button class="link" data-act="sea-tog">Saison-Pause aufheben</button></div>';
   if (S.active) h += '<button class="banner" data-act="wo-open"><span><b>Training läuft</b><small>' + esc(S.active.name) + ' · <span class="num" data-clock="wo">' + fmtDur(Date.now() - S.active.start) + '</span></small></span><span class="btn sm">Fortsetzen</span></button>';
   if (n >= total) {
     h += '<div class="card"><p class="eyebrow">Block ' + p.block.no + ' · ' + M.name + '</p><h3>Block geschafft</h3>' + blockSegs() +
@@ -166,7 +167,7 @@ function vStats() {
   if (seg === 'rec') return h + vRecords();
   const mon = mondayOf(todayStr()), wv = weeklyVolume(S.sessions, 10), v4 = wv.slice(-4).reduce((a, b) => a + b.v, 0);
   h += '<div class="stats tiles"><div><small>Einheiten</small><b>' + S.sessions.length + '</b></div><div><small>Diese Woche</small><b>' + weekCount(mon) + '</b><small>+ ' + weekRuns(mon) + ' Lauf</small></div><div><small>Serie</small><b>' + weekStreak() + ' Wo.</b></div></div>';
-  h += liftCard(S.ui.sper || '3M') + workoutCard() + muscleCard();
+  h += liftCard(S.ui.sper || '3M') + workoutCard() + muscleCard() + volCard() + sweetCard() + plateauCard();
   h += '<div class="card"><h2>Volumen pro Woche</h2><p class="readout" data-ro>Diese Woche: ' + volT(wv[wv.length - 1].v) + '</p>' + barChart(wv, 't', 'Trainingsvolumen pro Woche', volT) +
     '<p class="hint" style="margin-top:6px">Gewicht × Wiederholungen aller Arbeitssätze. Letzte 4 Wochen: ' + volT(v4) + '.</p></div>';
   return h;
@@ -270,7 +271,15 @@ function vSettings() {
     (NATIVE ? '<div class="row" style="margin-top:14px"><span><b>Erinnerung</b><br><small>Benachrichtigung an Tagen mit Plan</small></span><button class="chip" data-act="remind" aria-pressed="' + !!p.remind.on + '">' + (p.remind.on ? 'An' : 'Aus') + '</button></div>' +
       (p.remind.on ? '<label class="lab" for="p-lead">Vorlauf</label><select id="p-lead" data-chg="lead">' + [[0,'Zur Trainingszeit'],[15,'15 min vorher'],[30,'30 min vorher'],[60,'1 h vorher'],[120,'2 h vorher']].map(a => '<option value="' + a[0] + '"' + (p.remind.lead === a[0] ? ' selected' : '') + '>' + a[1] + '</option>').join('') + '</select>' : '') : '') +
     '<div class="row" style="margin-top:14px"><span><b>Wakeboard-Fokus</b><br><small>Griff-Finisher am Ende jeder Einheit</small></span><button class="chip" data-act="g-wake" aria-pressed="' + !!p.wake + '">' + (p.wake ? 'An' : 'Aus') + '</button></div></div>' +
-    '<p class="hint">Saisonstart und Griff-Test-Intervall stellst du unter Körper → Griffkraft ein.</p>';
+    '<div class="card"><h2>Training</h2>' +
+    '<div class="row"><span><b>Tagesform-Check</b><br><small>3 Fragen vor dem Start, passt Sätze und Last an</small></span><button class="chip" data-act="rd-tog" aria-pressed="' + (p.readyCheck !== false) + '">' + (p.readyCheck !== false ? 'An' : 'Aus') + '</button></div>' +
+    '<div class="row" style="margin-top:12px"><span><b>Volumensteuerung</b><br><small>±1 Satz je Muskel nach Fortschritt, wöchentlich</small></span><button class="chip" data-act="vol-tog" aria-pressed="' + (p.volAuto !== false) + '">' + (p.volAuto !== false ? 'An' : 'Aus') + '</button></div>' +
+    ('<div class="row" style="margin-top:12px"><span><b>Smartwatch-Modus</b><br><small>Pausenende immer als Benachrichtigung mit nächstem Satz und „✓ Geschafft“, damit die Uhr vibriert</small></span><button class="chip" data-act="watch-tog" aria-pressed="' + (p.watch !== false) + '">' + (p.watch !== false ? 'An' : 'Aus') + '</button></div>') + '</div>' +
+    '<div class="card"><h2>Dein Studio</h2><p class="hint">Kleinster Gewichtsschritt je Gerät. Die App rundet alle Vorgaben darauf.</p>' +
+    [['LH', 'Langhantel (gesamt)', [1.25, 2.5, 5]], ['KH', 'Kurzhanteln', [1, 2, 2.5]], ['MA', 'Maschinen', [1.25, 2.5, 5]], ['KB', 'Kabelzug', [1.25, 2.5, 5]]].map(([k, l, opts]) => { const cur = (p.gym && p.gym[k]) || INC[k]; return '<label class="lab">' + l + '</label><div class="chips">' + opts.map(o => '<button class="chip" data-act="gym-inc" data-v="' + k + ':' + o + '" aria-pressed="' + (cur === o) + '">' + fmt(o) + ' kg</button>').join('') + '</div>'; }).join('') + '</div>' +
+    '<div class="card"><h2>Wake-Saison</h2><div class="pair"><div><label class="lab" for="p-sea">Saisonstart</label><input type="date" id="p-sea" data-chg="season" value="' + esc(p.season || '') + '"></div><div><label class="lab" for="p-sea2">Saisonende</label><input type="date" id="p-sea2" data-chg="seasonEnd" value="' + esc(seasonEnd() || '') + '"></div></div>' +
+    '<div class="row" style="margin-top:12px"><span><b>Gym-Pause in der Saison</b><br><small>Keine Trainings-Erinnerungen, Wakeboarden ist dann dein Training</small></span><button class="chip" data-act="sea-tog" aria-pressed="' + (p.seasonPause !== false) + '">' + (p.seasonPause !== false ? 'An' : 'Aus') + '</button></div></div>' +
+    '<p class="hint">Das Griff-Test-Intervall stellst du unter Wake → Griffkraft ein.</p>';
 }
 function vData() {
   return '<div class="card"><p class="sub" id="cloudstate">' + cloudText() + '</p><div class="stack" style="margin-top:12px">' +
