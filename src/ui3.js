@@ -3,7 +3,7 @@
 function uid(pre) { return pre + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function itemFromPlan(pl) {
   const sets = []; for (let i = 0; i < pl.sets; i++) { const sp = pl.spec && pl.spec[i]; sets.push(sp ? {kg:sp.kg, reps:sp.reps, top:!!sp.top, done:false} : {kg:pl.kg == null ? null : pl.kg, reps:pl.reps, done:false}); }
-  return {exId:pl.exId, ss:!!pl.ss, plan:{mode:pl.mode, sets:pl.sets, reps:pl.reps, pct:pl.pct, kg:pl.kg, rng:pl.rng, desc:pl.desc, e1:pl.e1, first:pl.first, slot:pl.slot, top:!!pl.spec}, lastTxt:pl.lastTxt, feel:'ok', sets};
+  return {exId:pl.exId, ss:!!pl.ss, plan:{mode:pl.mode, sets:pl.sets, reps:pl.reps, pct:pl.pct, kg:pl.kg, rng:pl.rng, desc:pl.desc, e1:pl.e1, first:pl.first, slot:pl.slot, top:!!pl.spec, rest:pl.rest || null, unit:pl.unit || null, wkg:!!pl.wkg}, lastTxt:pl.lastTxt, feel:'ok', sets};
 }
 let wakeLock = null;
 function wake() { try { if (navigator.wakeLock && !wakeLock) navigator.wakeLock.request('screen').then(l => { wakeLock = l; l.addEventListener('release', () => { wakeLock = null; }); }).catch(() => {}); } catch (e) {} }
@@ -28,6 +28,8 @@ function applyReady(items, sc) {
   });
 }
 function startWorkout(free, planId, ready) {
+  const cu = free ? null : seasonCatchUp(S.p);
+  if (cu) setTimeout(() => toast('Saisonplan: ' + cu.behind + ' Wochen Rückstand, Woche ' + cu.skipped + ' übersprungen, damit Maximalkraft und Power bis zum Saisonstart passen.'), 900);
   const vch = free ? [] : volEvaluate(S.p, S.sessions);
   if (vch.length) setTimeout(() => toast('Volumen angepasst: ' + vch.map(c => c.m + ' ' + (c.to > c.from ? '+1' : '−1') + ' Satz').join(', ')), 400);
   const p = S.p, total = blockSessions(p), over = p.block.n >= total;
@@ -48,7 +50,7 @@ function finishWorkout() {
   S.sessions.push(sess);
   if (a.n !== null && a.n === p.block.n && a.block === p.block.no) p.block.n++;
   let prepDone = false;
-  if (a.prep && p.prep && p.prep.on) { p.prep.n = (p.prep.n || 0) + 1; if (p.prep.n >= p.prep.weeks * p.days.length) { p.prep.on = false; p.prep.doneBlock = p.block.no; p.block.started = todayStr(); prepDone = true; } }
+  if (a.prep && p.prep && p.prep.on) { p.prep.n = (p.prep.n || 0) + 1; if (p.prep.n >= p.prep.weeks * p.days.length) { p.prep.on = false; p.prep.doneBlock = p.block.no; p.block.started = todayStr(); prepDone = true; if (p.model === 'season' && p.block.n === 0) seasonStartBlock(p, addDays(todayStr(), 1)); } }
   S.ui.prepOne = false;
   S.active = null; S.rest = null; Nat.restSchedule(); saveActive(); saveProfile(); saveSession(sess); unwake();
   S.ui.sheet = {t:'summary', sess, prs, ch, prepDone};
@@ -56,7 +58,7 @@ function finishWorkout() {
 }
 
 /* ----- Trainingsansicht ----- */
-function restFor(it) { const e = EX[it.exId], ov = S.p.restOv && S.p.restOv[it.exId]; if (ov) return ov; if (it.plan.mode === 'pct') return it.plan.slot < 2 ? 150 : 120; if (e.m === 'Core' || it.plan.mode === 'time') return 60; return 90; }
+function restFor(it) { const e = EX[it.exId], ov = S.p.restOv && S.p.restOv[it.exId]; if (ov) return ov; if (it.plan.rest) return it.plan.rest; if (it.plan.mode === 'pct') return it.plan.slot < 2 ? 150 : 120; if (e.m === 'Core' || it.plan.mode === 'time') return 60; return 90; }
 function renderWorkout() {
   const el = $('#screen'), show = S.active && !S.ui.woMin && S.p && S.p.done;
   if (!show) { el.hidden = true; el.innerHTML = ''; document.body.classList.remove('lock'); return; }
@@ -233,7 +235,7 @@ function movePlanItem(i, d) { const pl = findPlan(S.p, S.ui.pv), j = i + d; if (
 function changePlan(fn) {
   const p = S.p, oldD = p.days.length, wasEnd = p.block.n >= blockSessions(p), wi = Math.floor(p.block.n / oldD);
   fn(p);
-  p.block.n = wasEnd ? blockSessions(p) : Math.min(wi, MODELS[p.model].weeks - 1) * p.days.length;
+  p.block.n = wasEnd ? blockSessions(p) : Math.min(wi, modelOf(p).weeks - 1) * p.days.length;
   saveProfile(); render();
 }
 
@@ -324,6 +326,18 @@ const ACT = {
   'w-rm'(v, t) { const i = +t.dataset.i; if (S.ui.rmI === i) S.ui.wf = null; if (S.ui.rmI !== i) { S.ui.rmI = i; renderWorkout(); setTimeout(() => { if (S.ui.rmI === i) { S.ui.rmI = null; renderWorkout(); } }, 4000); return; } S.ui.rmI = null; S.active.items.splice(i, 1); saveActive(); renderWorkout(); },
   'w-add'() { openPicker({mode:'wadd'}); },
   'tro-x'() { hideTrophy(); },
+  /* 7/3-Timer für Repeaters: 6 Zyklen, Signal bei jedem Wechsel */
+  'rp-timer'() {
+    if (S.rpT) { clearTimeout(S.rpT.h); S.rpT = null; renderWorkout(); return; }
+    let k = 0; S.rpT = {}; renderWorkout();
+    const step = () => {
+      if (!S.rpT) return; const on = k % 2 === 0, c = Math.floor(k / 2) + 1;
+      if (c > 6) { beep(1568, 420); Nat.vib(300); toast('Serie fertig: 6 Zyklen.'); S.rpT = null; renderWorkout(); return; }
+      if (on) { beep(1175, 160); Nat.vib(80); toast('Zyklus ' + c + '/6: hängen, 7 s'); } else { beep(660, 160); toast('3 s Pause'); }
+      k++; S.rpT.h = setTimeout(step, on ? 7000 : 3000);
+    };
+    step();
+  },
   'prep-on'(v) { S.p.prep = {on:true, weeks:+v || 3, n:0, started:todayStr()}; S.ui.prepOne = false; saveProfile(); render(); toast('Einstiegsphase gestartet: ' + S.p.prep.weeks + ' Wochen, beginnend mit 1 Satz je Übung.'); },
   'prep-off'() { if (S.p.prep) S.p.prep.on = false; saveProfile(); render(); toast('Einstiegsphase beendet. Die nächste Einheit ist Block-Woche 1.'); },
   'prep-wk'(v) { if (S.p.prep && S.p.prep.on) { S.p.prep.weeks = +v; saveProfile(); render(); } },
@@ -396,7 +410,7 @@ const ACT = {
   'e1-del'(v) { delete S.p.e1[v]; delete S.p.adj[v]; saveProfile(); S.ui.sheet = null; render(); },
   'p-day'(v) { changePlan(p => { const i = +v, k = p.days.indexOf(i); if (k >= 0) { if (p.days.length > 2) p.days.splice(k, 1); else toast('Mindestens 2 Trainingstage.'); } else if (p.days.length < 6) p.days.push(i); p.days.sort(); }); },
   'p-split'(v) { changePlan(p => { p.split = v; }); },
-  'p-model'(v) { changePlan(p => { p.model = v; }); },
+  'p-model'(v) { if (v === 'season' || S.p.model === 'season') { const p = S.p; p.model = v; p.block.wk = null; p.block.phase = null; p.block.n = 0; p.block.started = todayStr(); ensureSeason(p); saveProfile(); render(); toast(v === 'season' ? 'Saisonplan aktiv: Block startet mit ' + PHASES[p.block.phase] + '.' : 'Modell gewechselt, Block beginnt neu.'); return; } changePlan(p => { p.model = v; }); },
   'block-close'() { S.ui.sheet = {t:'block', res:closeBlock(S.p, S.sessions)}; renderSheet(); },
   'block-next'() { startNextBlock(S.p, S.ui.sheet.res); saveProfile(); S.ui.sheet = null; render(); toast('Block ' + S.p.block.no + ' gestartet.'); },
   'block-restart'(v, t) {
@@ -555,6 +569,15 @@ if (S.p && S.p.done && (S.p.v || 1) < 2) {
   S.p.v = 2; S.p.wake = true;
   remapBlock(p => { p.programs.push(pg); p.prog = pg.id; });
   setTimeout(() => toast('Neu: „' + pg.name + '“ ist aktiv. Wechseln über „Programm“.'), 600);
+}
+/* Einmalig (Version 1.17): Saisonplan für Wakeboarder, Handle-Hold-Test */
+if (S.p && S.p.done && (S.p.v || 1) < 3) {
+  S.p.v = 3;
+  if (S.p.wake) {
+    if (!(S.p.gripSet || []).includes('hhold')) S.p.gripSet = (S.p.gripSet || []).concat(['hhold']);
+    if (S.p.model !== 'season') { if (S.p.block.n === 0) { S.p.model = 'season'; S.p.block.wk = null; ensureSeason(S.p); setTimeout(() => toast('Neu: Saisonplan Wakeboard ist aktiv. Details unter Mehr → Periodisierung.'), 700); } else { S.p.nextModel = 'season'; setTimeout(() => toast('Neu: Ab dem nächsten Block läuft der Saisonplan Wakeboard.'), 700); } }
+  }
+  saveProfile();
 }
 if (S.p && S.p.done) checkBadges(true); /* bestehende Erfolge still vergeben */
 S.tab = tryLS(() => localStorage.getItem(LS + '.tab')) || 'today';

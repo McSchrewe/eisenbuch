@@ -64,16 +64,20 @@ function syncDays(p) {
   if (!p.days || p.days.length < 1) p.days = [0, 2, 4];
 }
 function planForDate(p, ds) { const wd = wdOf(ds); return activeProgram(p).plans.find(pl => pl.days.includes(wd)) || null; }
-/* Automatische Auswahl: heute geplant und noch nicht trainiert, sonst der nächste Wochentag mit Plan,
-   sonst Rotation nach dem zuletzt trainierten Plan */
+/* Automatische Auswahl: Der Plan richtet sich nach dem zuletzt tatsächlich trainierten (A → B → C → A),
+   die Wochentage bestimmen nur, wann. Fällt eine Einheit aus, rückt alles nach hinten statt einen Plan zu überspringen. */
 function nextPlan(p, sessions) {
   const pg = activeProgram(p), t = todayStr();
   if (!pg.plans.length) return null;
-  const doneToday = sessions.some(s => s.date === t);
-  if (!doneToday) { const pl = planForDate(p, t); if (pl) return {plan:pl, date:t, today:true}; }
-  for (let i = 1; i < 8; i++) { const d = addDays(t, i), pl = planForDate(p, d); if (pl) return {plan:pl, date:d, today:false}; }
   const ids = pg.plans.map(x => x.id), last = sessions.slice().reverse().find(s => ids.includes(s.planId));
-  return {plan:pg.plans[last ? (ids.indexOf(last.planId) + 1) % ids.length : 0], date:t, today:true, rot:true};
+  const due = pg.plans[last ? (ids.indexOf(last.planId) + 1) % ids.length : 0];
+  const doneToday = sessions.some(s => s.date === t), cal = planForDate(p, t);
+  let date = null, today = false;
+  if (!doneToday && cal) { date = t; today = true; }
+  else for (let i = 1; i < 8; i++) { const d = addDays(t, i); if (planForDate(p, d)) { date = d; break; } }
+  if (!date) return {plan:due, date:t, today:true, rot:true};
+  const calPl = planForDate(p, date);
+  return {plan:due, date, today, shifted:!!(calPl && calPl.id !== due.id), calPlan:calPl};
 }
 function lastDoneOfPlan(sessions, planId) { for (let i = sessions.length - 1; i >= 0; i--) if (sessions[i].planId === planId) return sessions[i].date; return null; }
 function daysAgo(ds) { return ds ? Math.round((parseD(todayStr()) - parseD(ds)) / 864e5) : null; }

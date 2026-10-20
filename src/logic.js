@@ -159,6 +159,7 @@ hock-iso|Isometrische Hocke (Wakeboard-Stance)|Quadrizeps|KG|t
 box-jump|Box Jumps (weiche Landung)|Quadrizeps|KG|p
 skater|Skater-Sprünge (einbeinige Landung)|Quadrizeps|KG|p
 handle-hold|Handle-Hold (Rudern am Seilgriff halten)|Rücken|KB|t
+repeaters|Repeaters 7/3 s (Hang-Zyklen)|Unterarme|KG|
 seil-rudern|Rudern am Seilgriff (Kabel)|Rücken|KB|c
 power-clean|Power Clean|Ganzkörper|LH|cl
 thruster|Thrusters|Ganzkörper|LH|c
@@ -179,6 +180,9 @@ RAW.trim().split('\n').forEach(line => {
   EX[e.id] = e; EXLIST.push(e);
 });
 const GRIP_ROT = ['dead-hang','farmers','towel-hang','plate-pinch','wrist-roller','reverse-curl'];
+const GRIP_HANG = ['dead-hang','towel-hang','einarm-hang'];
+/* Griff je Saisonphase: Maximalkraft schwer und kurz, Power-Phase Kraftausdauer */
+const GRIP_BY_PHASE = {max:['dead-hang','towel-hang','farmers'], power:['repeaters','handle-hold']};
 const MAIN_LIFTS = EXLIST.filter(e => e.main).map(e => e.id);   // Kniebeuge, Bankdrücken, Kreuzheben, Schulterdrücken, Rudern
 const BW_RATIO = {kniebeuge:0.75, bankdruecken:0.55, kreuzheben:1.0, ohp:0.35, 'lh-rudern':0.5};
 
@@ -236,6 +240,71 @@ const MODELS = {
     ]
   }
 };
+MODELS.season = {name:'Saisonplan Wakeboard', weeks:6, tag:'Kraft & Power zum Saisonstart', season:true,
+  desc:'Blöcke rückwärts vom Saisonstart: Grundlage, Maximalkraft mit Topsatz, dann Power & Kraftausdauer und eine Woche Tapering. Gezählt werden deine tatsächlich gemachten Einheiten: Fällt ein Training aus, verschiebt sich der Block. Liegst du 2 Wochen oder mehr zurück, überspringt die App eine Arbeitswoche, und spätere Blöcke werden kürzer geplant, damit du rechtzeitig zum Saisonstart in Form bist.', wk:[]};
+const PHASES = {prep:'Einstieg', base:'Grundlage', max:'Maximalkraft', power:'Power & Kraftausdauer', taper:'Tapering'};
+const rp = x => Math.round(x * 80) / 80; /* auf 1,25 % runden */
+function modelOf(p) { if (p.model !== 'season') return MODELS[p.model] || MODELS.linear; const wk = (p.block && p.block.wk) || []; return {...MODELS.season, wk, weeks:wk.length || 6}; }
+function daysTo(from, to) { return Math.round((parseD(to) - parseD(from)) / 864e5); } /* ganze Tage, unabhängig von der Zeitumstellung */
+function weeksTo(from, to) { return Math.floor(daysTo(from, to) / 7); }
+/* Phasenfenster rückwärts vom Saisonstart: Tapering 1 Wo., davor Power & Kraftausdauer 7 Wo., davor Maximalkraft 9 Wo., davor Grundlage.
+   Verspätet sich ein Block (ausgefallene Einheiten), startet der nächste später und seine Phase wird entsprechend kürzer. */
+const SEASON_WIN = {taper:1, power:7, max:9};
+function phaseWeeks(ph, L) {
+  const out = [], dl = (ph === 'base' || ph === 'max') && L >= 4, work = L - (dl ? 1 : 0);
+  for (let i = 0; i < work; i++) {
+    const t = work > 1 ? i / (work - 1) : 0;
+    if (ph === 'base') out.push({l:'Grundlage', phase:ph, pct:rp(0.70 + 0.075 * t), reps:Math.round(10 - 2 * t), sets:4});
+    else if (ph === 'max') { const w = {l:'Maximalkraft', phase:ph, pct:rp(0.80 + 0.075 * t), reps:Math.round(5 - 2 * t), sets:t < 0.5 ? 5 : 4}; if (i === work - 1 && work >= 2) { w.top = {pct:0.90, reps:3}; w.back = {pct:0.80, reps:4}; } out.push(w); }
+    else if (ph === 'power') out.push({l:'Power', phase:ph, pct:rp(0.85 + 0.025 * t), reps:Math.round(4 - t), sets:3});
+    else out.push({l:'Tapering', phase:ph, pct:0.85, reps:3, sets:2, deload:true});
+  }
+  if (dl) out.push({l:'Deload', phase:ph, pct:0.70, reps:5, sets:2, deload:true});
+  return out;
+}
+/* Nächster Block ab Datum: Phase nach verbleibender Zeit, lange Phasen in Blöcke à 6 Wochen geteilt (kein Rest unter 3 Wochen) */
+function nextSeasonBlock(p, from) {
+  const W = p.season ? weeksTo(from, p.season) : 0, P = SEASON_WIN.taper + SEASON_WIN.power, M = P + SEASON_WIN.max;
+  let phase = 'base', len = 6;
+  if (W >= M + 3) { phase = 'base'; len = W - M; }
+  else if (W >= P + 3) { phase = 'max'; len = W - P; }
+  else if (W >= 2) { phase = 'power'; len = W - SEASON_WIN.taper; }
+  else if (W >= 1) { phase = 'taper'; len = 1; }
+  if (len > 8) len = len - 6 < 3 ? len : 6; /* lange Phasen in Blöcke à 6 Wochen, kein Rest unter 3 Wochen */
+  const until = phase === 'taper' && p.season ? p.season : addDays(from, len * 7); /* Tapering reicht bis zum Saisonstart */
+  return {phase, len, wk:phaseWeeks(phase, len), from, until};
+}
+function seasonStartBlock(p, from) {
+  if (p.model !== 'season') return;
+  const b = nextSeasonBlock(p, from || todayStr());
+  Object.assign(p.block, {wk:b.wk, phase:b.phase, until:b.until, planStart:b.from});
+}
+function ensureSeason(p) { if (p.model === 'season' && (!p.block.wk || !p.block.wk.length)) seasonStartBlock(p, todayStr()); }
+/* Ausblick: aktueller Block, dann die geplanten Blöcke bis zum Saisonstart */
+function seasonOutlook(p) {
+  ensureSeason(p);
+  const out = []; let from;
+  if (p.prep && p.prep.on) { /* Einstieg läuft: Blöcke ab dem voraussichtlichen Einstiegsende planen */
+    const left = Math.max(0, p.prep.weeks * p.days.length - (p.prep.n || 0)), wl = Math.ceil(left / Math.max(1, p.days.length));
+    const pe = addDays(todayStr(), wl * 7); out.push({phase:'prep', from:todayStr(), until:pe, weeks:wl, cur:true}); from = pe;
+  } else { out.push({phase:p.block.phase, from:p.block.planStart, until:p.block.until, weeks:p.block.wk.length, cur:true}); from = p.block.until > todayStr() ? p.block.until : todayStr(); }
+  for (let i = 0; i < 12 && p.season && from < p.season; i++) { const b = nextSeasonBlock(p, from); out.push({phase:b.phase, from, until:b.until, weeks:b.len}); from = b.until; if (b.phase === 'taper') break; }
+  return out;
+}
+/* Hinter dem Plan? Mehr als 1 Woche Rückstand gegenüber dem Blockende: eine Arbeitswoche überspringen (nie Topsatz- oder Deload-Woche) */
+function seasonBehind(p) {
+  if (p.model !== 'season' || !p.block.wk || !p.block.until) return 0;
+  const d = p.days.length, L = p.block.wk.length, curW = Math.floor(p.block.n / d), cal = Math.max(0, Math.ceil(daysTo(todayStr(), p.block.until) / 7));
+  return Math.max(0, (L - curW) - cal);
+}
+function seasonCatchUp(p) {
+  if (p.prep && p.prep.on) return null;
+  const behind = seasonBehind(p); if (behind < 2) return null;
+  const d = p.days.length, wk = p.block.wk, curW = Math.floor(p.block.n / d), dl = wk.findIndex(w => w.deload), lastWork = (dl < 0 ? wk.length : dl) - 1;
+  if (curW >= lastWork) return null;
+  p.block.n = (curW + 1) * d;
+  return {skipped:curW + 1, behind};
+}
 const DUP_NAMES = {heavy:'Schwer', vol:'Volumen', mid:'Mittel'};
 const DUP_DAYS = {2:['heavy','vol'], 3:['heavy','vol','mid'], 4:['heavy','vol','mid','vol'], 5:['heavy','vol','mid','vol','mid'], 6:['heavy','vol','mid','heavy','vol','mid']};
 
@@ -250,12 +319,12 @@ function prepPr(p, one) {
   if (one) return {week:0, dayIdx:0, label:'Vorbereitung', ...PREP[1][0], prep:true, deload:false};
   return null;
 }
-function blockSessions(p) { return p.days.length * MODELS[p.model].weeks; }
+function blockSessions(p) { return p.days.length * modelOf(p).weeks; }
 function prescribe(p, n) {
-  const d = p.days.length, M = MODELS[p.model], wi = Math.floor(n / d), di = n % d;
+  const d = p.days.length, M = modelOf(p), wi = Math.floor(n / d), di = n % d;
   if (wi >= M.weeks) return null;
   const w = M.wk[wi];
-  if (p.model === 'linear') return {week:wi+1, dayIdx:di, label:w.l, pct:w.pct, reps:w.reps, sets:w.sets, deload:!!w.deload, top:w.top || null, back:w.back || null};
+  if (p.model !== 'dup') return {week:wi+1, dayIdx:di, label:w.l, pct:w.pct, reps:w.reps, sets:w.sets, deload:!!w.deload, top:w.top || null, back:w.back || null, phase:w.phase || null};
   if (w.deload) return {week:wi+1, dayIdx:di, label:'Deload', pct:w.pct, reps:w.reps, sets:w.sets, deload:true};
   const t = DUP_DAYS[d][di], x = w[t];
   return {week:wi+1, dayIdx:di, label:DUP_NAMES[t], pct:x.pct, reps:x.reps, sets:x.sets, deload:false};
@@ -390,14 +459,28 @@ function exPlan(p, id, slot, pr, sessions) {
   const base = {exId:id, slot, inc, lastTxt};
   const sets = pr.prep ? Math.max(1, pr.sets) : pr.deload ? 2 : 3;
   if (e.t) {
+    const ws = last ? workSets(last.x) : [], lkg = ws.length ? Math.max(...ws.map(s => s.kg || 0)) : 0;
+    /* Maximalkraft: schwere kurze Hangs bzw. isometrischer Handle-Zug, Steigerung über Zusatzgewicht */
+    if (pr.phase === 'max' && (GRIP_HANG.includes(id) || id === 'handle-hold')) {
+      const tgt = id === 'handle-hold' ? 8 : 10, step = e.eq === 'KG' ? 2.5 : inc, short = ws.length && ws.every(s => s.reps <= 20);
+      const kg = !ws.length ? (e.eq === 'KG' ? 0 : null) : short && ws.every(s => s.reps >= tgt) ? lkg + step : lkg;
+      return {...base, mode:'time', sets:5, reps:tgt, kg, rest:120, wkg:true, desc:'5 × ' + tgt + ' s schwer' + (e.eq === 'KG' ? ', Zusatzgewicht steigern' : ', Handle an der Hüfte, Ellbogen ca. 90°')};
+    }
+    /* Power-Phase: Runden-Simulation, 6 × 25 s Handle-Hold bei ca. 60 % der Maximal-Last */
+    if (pr.phase === 'power' && id === 'handle-hold') {
+      const lap = ws.length >= 6 && ws.every(s => s.reps >= 20), kg = !ws.length ? null : lap ? (ws.every(s => s.reps >= 25) ? lkg + inc : lkg) : roundTo(lkg * 0.6, inc);
+      return {...base, mode:'time', sets:6, reps:25, kg:kg || null, rest:40, desc:'Runden-Simulation: 6 × 25 s halten, 40 s Pause'};
+    }
     const prev = last ? Math.max(...workSets(last.x).map(s => s.reps)) : 0;
     const tgt = pr.deload || pr.prep ? Math.max(15, Math.round(prev * 0.7) || 20) : Math.min(180, prev ? prev + 5 : 30);
-    const lkg = last && e.eq !== 'KG' ? Math.max(...workSets(last.x).map(s => s.kg || 0)) : 0;
-    return {...base, mode:'time', sets, reps:tgt, kg:lkg || (e.eq === 'KG' ? 0 : null), desc:sets + ' Sätze × ' + tgt + ' s'};
+    const lk2 = e.eq !== 'KG' ? lkg : 0;
+    return {...base, mode:'time', sets, reps:tgt, kg:lk2 || (e.eq === 'KG' ? 0 : null), desc:sets + ' Sätze × ' + tgt + ' s'};
   }
   if (e.eq === 'KG') {
-    const r = bwRange(e), s = pr.prep ? {kg:0, reps:r[0]} : dpSuggest(last, r[0], r[1], 2.5);
-    return {...base, mode:'bw', sets, reps:s.reps, kg:s.kg || 0, rng:r, desc:sets + ' Sätze × ' + r[0] + '–' + r[1] + ' Wdh.'};
+    if (id === 'repeaters') { const r = [4, 6], s = pr.prep ? {kg:0, reps:4} : dpSuggest(last, r[0], r[1], 2.5), n = pr.phase === 'power' ? 4 : sets;
+      return {...base, mode:'bw', sets:n, reps:s.reps, kg:s.kg || 0, rng:r, unit:'Zyklen', rest:180, desc:n + ' Serien × 4–6 Zyklen (7 s hängen, 3 s Pause)'}; }
+    const r = pr.phase === 'max' && e.c ? [3, 6] : bwRange(e), s = pr.prep ? {kg:0, reps:r[0]} : dpSuggest(last, r[0], r[1], 2.5);
+    return {...base, mode:'bw', sets:pr.phase === 'max' && e.c ? 4 : sets, reps:s.reps, kg:s.kg || 0, rng:r, desc:(pr.phase === 'max' && e.c ? 4 : sets) + ' Sätze × ' + r[0] + '–' + r[1] + ' Wdh.' + (pr.phase === 'max' && e.c ? ' mit Zusatzgewicht' : '')};
   }
   const e1 = e.c ? e1Of(p, id) : null;
   if (e1) {
@@ -424,6 +507,7 @@ function exPlan(p, id, slot, pr, sessions) {
 function templateIds(p, tid) { return TPL[tid].ex.map((id, i) => (p.swaps && p.swaps[tid + ':' + i]) || id); }
 /* Ein Training aus einem Plan bauen. Ohne planId wählt die App automatisch (siehe nextPlan). */
 function buildWorkout(p, sessions, n, planId, opt) {
+  ensureSeason(p);
   let pr = prepPr(p, opt && opt.prep) || prescribe(p, n); if (!pr) return null;
   /* Wiedereinstieg: nach mindestens 14 Tagen Pause einmalig 10 % leichter */
   const lastS = sessions.length ? sessions[sessions.length - 1] : null;
@@ -431,14 +515,21 @@ function buildWorkout(p, sessions, n, planId, opt) {
   ensurePrograms(p);
   const plan = (planId && findPlan(p, planId)) || (nextPlan(p, sessions) || {}).plan;
   if (!plan) return {planId:null, tplId:null, name:'Freies Training', pr, items:[], est:5};
-  let ids = plan.items.map(it => it.exId);
-  if (pr.deload && ids.length > 3) ids = ids.slice(0, Math.max(3, Math.ceil(ids.length * 0.7)));
+  let lst = plan.items.map(it => ({id:it.exId, ss:!!it.ss}));
+  if (pr.deload && lst.length > 3) lst = lst.slice(0, Math.max(3, Math.ceil(lst.length * 0.7)));
+  if (pr.phase === 'max' && lst.length > 6) lst = lst.slice(0, 6); /* Maximalkraft: weniger Übungen, dafür schwerer */
+  if (pr.phase === 'power') { /* Kontrast: Sprung direkt nach der schweren Grundübung, ohne Pause dazwischen */
+    lst = lst.filter((x, i) => i < 7 || x.id === 'handle-hold'); /* weniger Volumen, Handle-Hold bleibt */
+    for (let i = 0; i < lst.length - 1; i++) if (EX[lst[i].id].plyo && (EX[lst[i + 1].id].main || (EX[lst[i + 1].id].c && EX[lst[i + 1].id].l))) { const t = lst[i]; lst[i] = {...lst[i + 1], ss:true}; lst[i + 1] = {...t, ss:false}; i++; }
+  }
+  let ids = lst.map(x => x.id);
   const items = ids.map((id, i) => exPlan(p, id, i, pr, sessions));
-  items.forEach((it, i) => { it.ss = !!(plan.items[i] && plan.items[i].ss) && i < items.length - 1; }); /* Supersatz mit der nächsten Übung */
+  items.forEach((it, i) => { it.ss = lst[i].ss && i < items.length - 1; }); /* Supersatz mit der nächsten Übung */
   if (typeof applyVol === 'function') applyVol(p, items, pr); /* Volumensteuerung je Muskel */
   /* Wakeboard-Fokus: Griff-Finisher, außer der Plan fordert den Griff schon (Unterarm-, Hang- oder Halteübung) */
   const GRIP_HEAVY = ['hanging-leg','hanging-knee','handle-hold','toes-bar','klimmzuege','klimmzug-unter','klimmzug-neutral'];
-  if (p.wake && !ids.some(id => EX[id].m === 'Unterarme' || GRIP_HEAVY.includes(id))) items.push(exPlan(p, GRIP_ROT[n % GRIP_ROT.length], 99, pr, sessions));
+  const rot = GRIP_BY_PHASE[pr.phase] || GRIP_ROT;
+  if (p.wake && pr.phase !== 'taper' && !ids.some(id => EX[id].m === 'Unterarme' || (GRIP_HEAVY.includes(id) && pr.phase !== 'power'))) items.push(exPlan(p, rot[n % rot.length], 99, pr, sessions));
   const est = 5 + items.reduce((a, it) => a + it.sets * (it.mode === 'pct' ? 3.5 : 2.3), 0);
   return {planId:plan.id, tplId:plan.id, name:plan.name, color:plan.color, pr, items, est:Math.round(est / 5) * 5};
 }
@@ -501,6 +592,8 @@ function closeBlock(p, sessions) {
 function startNextBlock(p, res) {
   res.forEach(r => { p.e1[r.id] = r.to; p.adj[r.id] = 0; });
   p.block = {n:0, no:p.block.no + 1, e1Start:{...p.e1}, started:todayStr()};
+  if (p.nextModel) { p.model = p.nextModel; p.nextModel = null; }
+  seasonStartBlock(p, todayStr());
 }
 
 /* ===== Rechner ===== */

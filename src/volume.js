@@ -67,7 +67,7 @@ function volEvaluate(p, sessions) {
 }
 /* Anwendung: zusätzlicher oder weggelassener Satz bei der ersten Übung des Muskels in der Einheit */
 function applyVol(p, items, pr) {
-  if (p.volAuto === false || !p.vol || pr.deload || pr.prep) return;
+  if (p.volAuto === false || !p.vol || pr.deload || pr.prep || pr.phase === 'power' || pr.phase === 'taper') return; /* kurz vor der Saison kein Zusatzvolumen */
   const done = {};
   items.forEach(it => {
     const e = EX[it.exId]; if (!e || done[e.m] || !p.vol[e.m] || !['pct', 'dp', 'bw'].includes(it.mode)) return;
@@ -118,7 +118,7 @@ function sweetCard() {
   h += '<div class="sweet">' + sp.b.map(x => '<div class="swr' + (sp.best === x ? ' best' : '') + '"><span>' + x.lo + (x.hi > 50 ? '+' : '–' + x.hi) + '</span><div class="swt"><b style="width:' + (x.avg === null ? 0 : Math.max(2, Math.abs(x.avg) / max * 100)) + '%" class="' + (x.avg !== null && x.avg < 0 ? 'neg' : '') + '"></b></div><small>' + (x.avg === null ? '–' : (x.avg > 0 ? '+' : '') + fmt(Math.round(x.avg * 1000) / 10) + ' %') + ' · ' + x.n + ' Wo.</small></div>').join('') + '</div>';
   h += sp.best ? '<p style="margin-top:8px"><b>' + m + ':</b> bisher am besten bei ' + sp.best.lo + (sp.best.hi > 50 ? '+' : '–' + sp.best.hi) + ' harten Sätzen pro Woche (⌀ ' + (sp.best.avg > 0 ? '+' : '') + fmt(Math.round(sp.best.avg * 1000) / 10) + ' % in der Folgewoche, ' + sp.best.n + ' Wochen). Die Volumensteuerung richtet sich danach.</p>'
     : '<p class="hint" style="margin-top:8px">Noch zu wenig Daten: ' + sp.pts.length + ' auswertbare Wochen. Nötig sind mindestens 2 Satzbereiche mit je 3 Wochen.</p>';
-  return h + '<p class="hint">Kraftfortschritt ist ein Stellvertreter für Muskelwachstum. Ob tatsächlich Masse dazukommt, zeigen die Umfänge unter Körper.</p></div>';
+  return h + '<p class="hint">' + (S.p.model === 'season' ? 'Gemessen wird dein Kraftfortschritt, also genau das, was auf dem Wasser zählt.' : 'Kraftfortschritt ist ein Stellvertreter für Muskelwachstum. Ob tatsächlich Masse dazukommt, zeigen die Umfänge unter Körper.') + '</p></div>';
 }
 function plateauCard() {
   const pl = plateaus(S.sessions); if (!pl.length) return '';

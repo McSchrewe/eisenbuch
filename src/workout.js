@@ -5,7 +5,7 @@ function woTotals(a) { let d = 0, n = 0, vol = 0; a.items.forEach(it => it.sets.
 function targetShort(it) {
   const pl = it.plan;
   if (pl.mode === 'time') return pl.sets + ' × ' + pl.reps + ' s';
-  if (pl.mode === 'bw') return pl.sets + ' × ' + pl.rng[0] + '–' + pl.rng[1] + ' Wdh.';
+  if (pl.mode === 'bw') return pl.sets + ' × ' + pl.rng[0] + '–' + pl.rng[1] + ' ' + (pl.unit || 'Wdh.');
   if (pl.mode === 'pct') return pl.sets + ' × ' + pl.reps + ' · ' + fkg(pl.kg);
   return pl.sets + ' × ' + pl.rng[0] + '–' + pl.rng[1] + (pl.kg ? ' · ' + fkg(pl.kg) : '');
 }
@@ -14,8 +14,8 @@ function targetLong(it) {
   if (pl.mode === 'pct' && pl.top) { const b = it.sets.find(q => !q.top && !q.warm); return '<b>Topsatz ' + fkg(pl.kg) + ' × ' + pl.reps + '</b>' + (b ? ' · dann ' + it.sets.filter(q => !q.top && !q.warm).length + ' × ' + b.reps + ' @ ' + fkg(b.kg) : '') + ' · 1RM ' + fkg(pl.e1); }
   if (pl.mode === 'pct') return '<b>' + fkg(pl.kg) + '</b> · ' + pl.sets + ' × ' + pl.reps + ' Wdh. · ' + fmt(Math.round(pl.pct * 1000) / 10) + ' % von ' + fkg(pl.e1);
   if (pl.mode === 'dp') return (pl.kg ? '<b>' + fkg(pl.kg) + '</b> · ' : '') + pl.sets + ' × ' + pl.rng[0] + '–' + pl.rng[1] + ' Wdh.' + (pl.first ? ' · Gewicht mit ca. 2 Wdh. Reserve wählen' : '');
-  if (pl.mode === 'bw') return '<b>' + pl.sets + ' × ' + pl.rng[0] + '–' + pl.rng[1] + ' Wdh.</b>' + (pl.kg > 0 ? ' · +' + fkg(pl.kg) : '');
-  return '<b>' + pl.sets + ' × ' + pl.reps + ' s</b> halten';
+  if (pl.mode === 'bw') return '<b>' + pl.sets + ' × ' + pl.rng[0] + '–' + pl.rng[1] + ' ' + (pl.unit || 'Wdh.') + '</b>' + (pl.kg > 0 ? ' · +' + fkg(pl.kg) : '') + (pl.unit === 'Zyklen' ? ' · je Zyklus 7 s hängen, 3 s Pause' : '');
+  return '<b>' + pl.sets + ' × ' + pl.reps + ' s</b> halten' + (pl.kg > 0 ? ' · ' + (EX[it.exId].eq === 'KG' ? '+' : '') + fkg(pl.kg) : '') + (pl.rest ? ' · ' + fmtDur(pl.rest * 1000) + ' Pause' : '');
 }
 function firstOpenSet(it) { const k = it.sets.findIndex(s => !s.done); return k >= 0 ? k : it.sets.length - 1; }
 
@@ -42,7 +42,7 @@ function vFocus(i) {
   const a = S.active, it = a.items[i]; if (!it) { S.ui.wf = null; return vWorkoutList(); }
   const e = EX[it.exId], pl = it.plan, mode = pl.mode, pg = woProg(it);
   let si = S.ui.ws; if (si == null || !it.sets[si]) si = firstOpenSet(it);
-  const s = it.sets[si], noKg = mode === 'time' && e.eq === 'KG';
+  const s = it.sets[si], noKg = mode === 'time' && e.eq === 'KG' && !pl.wkg;
   const wn = it.sets.slice(0, si + 1).filter(q => !q.warm).length;
   const pa = ssPartner(a, i);
   /* Fotos und Anleitung nur auf Antippen der Figur, damit alles Wichtige ohne Scrollen auf den Bildschirm passt */
@@ -53,8 +53,8 @@ function vFocus(i) {
   let n = 0;
   h += '<div class="spills">' + it.sets.map((q, j) => { const lab = q.warm ? 'A' : q.top ? (++n, 'Top') : ++n; return '<button class="spill' + (j === si ? ' cur' : '') + (q.done ? ' done' : '') + (q.warm ? ' warm' : '') + '" data-act="ws-sel" data-v="' + j + '"><b>' + lab + '</b><small class="num">' + (noKg ? '' : (q.kg != null ? fmt(q.kg) : '–') + '×') + (q.reps != null ? q.reps : '–') + '</small></button>'; }).join('') + '</div>';
   h += '<div class="fbig"><div class="fset"><small>Satz</small><b class="num">' + (s.warm ? 'A' : wn) + '</b><small>/ ' + pg.all + '</small></div><div class="fsteps">' +
-    (noKg ? '' : stepper(i, si, 'kg', mode === 'bw' ? 'Zusatz' : 'Gewicht', s.kg, 'kg', mode === 'bw' ? '0' : 'kg')) +
-    stepper(i, si, 'reps', mode === 'time' ? 'Dauer' : 'Wdh.', s.reps, mode === 'time' ? 's' : '×', '0') + '</div></div>';
+    (noKg ? '' : stepper(i, si, 'kg', mode === 'bw' || (mode === 'time' && e.eq === 'KG') ? 'Zusatz' : 'Gewicht', s.kg, 'kg', mode === 'bw' ? '0' : 'kg')) +
+    stepper(i, si, 'reps', mode === 'time' ? 'Dauer' : (pl.unit || 'Wdh.'), s.reps, mode === 'time' ? 's' : '×', '0') + '</div></div>';
   h += '<button class="bigchk' + (s.done ? ' done' : '') + '" data-act="set-done" data-i="' + i + '" data-s="' + si + '" aria-label="' + (s.done ? 'Satz zurücksetzen' : 'Satz erledigt') + '">' + I(ICONS.check) + '</button>' +
     '<p class="hint" style="text-align:center;margin:6px 0 0">' + (s.done ? 'Erledigt. Antippen setzt den Satz zurück.' : 'Satz erledigt? Haken antippen. Pause ' + fmtDur(restFor(it) * 1000) + '.') + '</p>';
   if (pg.done === pg.all && pg.all) h += '<div class="card" style="margin-top:14px"><h3>Übung fertig</h3><p class="sub" style="margin-top:4px">Wie viele Wiederholungen wären im letzten Satz noch gegangen? Steuert die Gewichte der nächsten Wochen.</p><div class="chips">' + RIR_FEEL.map(f => '<button class="chip" data-act="feel" data-i="' + i + '" data-v="' + f[0] + '" aria-pressed="' + (it.feel === f[0]) + '">' + f[1] + '</button>').join('') + '</div></div>';
@@ -64,6 +64,7 @@ function vFocus(i) {
   const tools = [];
   if ((mode === 'pct' || (mode === 'dp' && pl.kg)) && ['LH','KH','MA','KB'].includes(e.eq) && !it.sets.some(q => q.warm)) tools.push('<button class="link" data-act="warm" data-i="' + i + '">Aufwärmsätze</button>');
   if (e.eq === 'LH') tools.push('<button class="link" data-act="plates" data-i="' + i + '">Scheiben</button>');
+  if (pl.unit === 'Zyklen') tools.push('<button class="link" data-act="rp-timer" data-v="' + i + '">' + (S.rpT ? 'Timer stoppen' : '7/3-Timer starten') + '</button>');
   tools.push('<button class="link" data-act="set-add" data-i="' + i + '">+ Satz</button>');
   if (it.sets.length > 1) tools.push('<button class="link" data-act="set-rm" data-i="' + i + '">− Satz</button>');
   tools.push('<button class="link" data-act="w-swap" data-i="' + i + '">Tauschen</button>', '<button class="link" data-act="w-rm" data-i="' + i + '"' + (S.ui.rmI === i ? ' style="color:var(--heavy)">Wirklich entfernen?' : '>Entfernen') + '</button>');

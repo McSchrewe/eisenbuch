@@ -32,16 +32,18 @@ function planLine(it) {
   if (it.mode === 'pct') return it.sets + ' Sätze · ' + it.reps + ' Wdh. · ' + fkg(it.kg);
   return it.sets + ' Sätze · ' + it.rng[0] + '–' + it.rng[1] + ' Wdh. · ' + (it.kg ? fkg(it.kg) : 'Gewicht wählen');
 }
+const PHASE_TXT = {prep:'1 → 3 Sätze, 60 → 70 %, zählt nicht zum Block', base:'4 × 8–10, 70–77,5 %, Griff schwer', max:'5 × 5 → 4 × 3, 80–87,5 %, Topsatz, Handle-Zug isometrisch', power:'3 × 3–4, 85 %, Sprünge direkt danach, Repeaters, Runden-Simulation', taper:'halbes Volumen, Last halten'};
 function phaseText(pr) {
-  const M = MODELS[S.p.model];
+  const M = modelOf(S.p);
   if (pr.prep) return pr.label + ' · ' + pr.sets + ' Satz' + (pr.sets > 1 ? 'e' : '') + ' · ' + fmt(Math.round(pr.pct * 1000) / 10) + ' %';
+  if (S.p.model === 'season') return (pr.deload ? pr.label : PHASES[pr.phase] || pr.label) + ' · Woche ' + pr.week + '/' + M.weeks + ' · ' + (pr.top ? 'Topsatz × 3' : pr.sets + ' × ' + pr.reps) + ' · ' + fmt(Math.round((pr.top ? pr.top.pct : pr.pct) * 1000) / 10) + ' %';
   return 'Woche ' + pr.week + '/' + M.weeks + ' · ' + (S.p.model === 'dup' && !pr.deload ? pr.label + '-Tag' : pr.label) + ' · ' + fmt(Math.round(pr.pct * 1000) / 10) + ' %';
 }
 function head(title, eyebrow, right) { return '<header class="apphead"><div>' + (eyebrow ? '<p class="eyebrow">' + eyebrow + '</p>' : '') + '<h1>' + title + '</h1></div>' + (right || '') + '</header>'; }
 function subhead(title, backAct, right) { return '<header class="subhead"><button class="ic" data-act="' + backAct + '" aria-label="Zurück">' + I(ICONS.back) + '</button><h1>' + esc(title) + '</h1>' + (right || '') + '</header>'; }
 function segc(act, cur, opts) { return '<div class="segc" role="group">' + opts.map(o => '<button data-act="' + act + '" data-v="' + o[0] + '" aria-pressed="' + (cur === o[0]) + '">' + o[1] + '</button>').join('') + '</div>'; }
 function blockSegs() {
-  const p = S.p, M = MODELS[p.model], d = p.days.length, n = p.block.n;
+  const p = S.p, M = modelOf(p), d = p.days.length, n = p.block.n;
   let h = '<div class="segs" aria-label="Fortschritt im Block">';
   for (let w = 0; w < M.weeks; w++) { h += '<div>'; for (let i = 0; i < d; i++) { const k = w * d + i; h += '<span class="seg' + (k < n ? ' done' : k === n ? ' next' : '') + '"></span>'; } h += '</div>'; }
   return h + '</div>';
@@ -116,7 +118,7 @@ function prepLine(w) {
   return '<button class="chkrow" data-act="prep-one" aria-pressed="' + !!S.ui.prepOne + '"><span class="cbox">' + (S.ui.prepOne ? I(ICONS.check) : '') + '</span><span>Nur Vorbereitung <small>(2 Sätze bei 65 %, zählt nicht zum Zyklus)</small></span></button>';
 }
 function vTrain() {
-  const p = S.p, pg = activeProgram(p), M = MODELS[p.model], total = blockSessions(p), n = p.block.n;
+  const p = S.p, pg = activeProgram(p), M = modelOf(p), total = blockSessions(p), n = p.block.n;
   let h = head('Training', esc(dlong(todayStr())), '<button class="ic" data-act="tab" data-v="more" aria-label="Mehr und Einstellungen">' + I(ICONS.gear) + '</button>') + '<button class="pill" data-act="prog-open"><small>Programm</small><span>' + esc(pg.name) + '</span>' + I(ICONS.chev, 'i s') + '</button>';
   if (inSeasonPause()) h += '<div class="card prepc"><b>Wake-Saison bis ' + esc(dshort(seasonEnd())) + '</b><p class="sub" style="margin-top:4px">Das Krafttraining ruht, Trainings-Erinnerungen sind aus. Ein Training kannst du trotzdem jederzeit starten. Nach der Saison schlägt die App eine Einstiegsphase vor.</p><button class="link" data-act="sea-tog">Saison-Pause aufheben</button></div>';
   if (S.active) h += '<button class="banner" data-act="wo-open"><span><b>Training läuft</b><small>' + esc(S.active.name) + ' · <span class="num" data-clock="wo">' + fmtDur(Date.now() - S.active.start) + '</span></small></span><span class="btn sm">Fortsetzen</span></button>';
@@ -129,6 +131,7 @@ function vTrain() {
       const w = buildWorkout(p, S.sessions, n, np.plan.id, {prep:S.ui.prepOne});
       h += prepBanner() + heroCard(w, (np.today ? 'Heute' : esc(dweek(np.date))) + ' · ' + esc(p.time) + ' Uhr') + prepLine(w) + '<div class="blockline">' + blockSegs() + '<small>' + (p.prep && p.prep.on ? 'Block ' + p.block.no + ' startet nach dem Einstieg' : 'Block ' + p.block.no + ' · Einheit ' + (n + 1) + ' von ' + total) + '</small></div>';
       if (!np.today) h += '<p class="hint" style="margin:-4px 0 12px">Heute ist kein Training geplant. Du kannst trotzdem jeden Plan starten.</p>';
+      if (np.shifted) h += '<p class="hint" style="margin:-4px 0 12px">Nachgeholt: ' + esc(np.plan.name) + ' ist als Nächstes dran, weil die letzte geplante Einheit ausgefallen ist. Die Reihenfolge bleibt, alles rückt einen Termin nach hinten.</p>';
     } else h += '<div class="empty">Noch kein Plan in diesem Programm. Leg unten einen an.</div>';
   }
   const gd = gripDue();
@@ -230,14 +233,14 @@ function vMore() {
   if (m === 'set') return subhead('Einstellungen', 'more-back') + vSettings();
   if (m === 'data') return subhead('Daten und Sicherung', 'more-back') + vData();
   return subhead('Mehr', 'more-close') + '<div class="list">' +
-    moreRow('peri', ICONS.wave, 'Periodisierung und 1RM', MODELS[p.model].name + ' · Block ' + p.block.no + ', Einheit ' + Math.min(p.block.n + 1, blockSessions(p)) + '/' + blockSessions(p)) +
+    moreRow('peri', ICONS.wave, 'Periodisierung und 1RM', modelOf(p).name + ' · Block ' + p.block.no + ', Einheit ' + Math.min(p.block.n + 1, blockSessions(p)) + '/' + blockSessions(p)) +
     moreRow('run', ICONS.run, 'Laufen', S.runs.length + ' Läufe · Stoppuhr und Wochenkilometer') +
     moreRow('set', ICONS.gear, 'Einstellungen', 'Trainingszeit' + (NATIVE ? ', Erinnerungen' : '') + ', Wakeboard-Fokus') +
     moreRow('data', ICONS.data, 'Daten und Sicherung', 'Export, Import, Zurücksetzen') + '</div>' +
     '<p class="hint" style="text-align:center;margin-top:18px">Eisenbuch · ' + EXLIST.length + ' Übungen</p>';
 }
 function vPeri() {
-  const p = S.p, M = MODELS[p.model], d = p.days.length, curW = Math.floor(p.block.n / d), key = MAIN_LIFTS.find(id => p.e1[id]) || 'kniebeuge', ke1 = p.e1[key];
+  const p = S.p, M = modelOf(p), d = p.days.length, curW = Math.floor(p.block.n / d), key = MAIN_LIFTS.find(id => p.e1[id]) || 'kniebeuge', ke1 = p.e1[key];
   let h = '<div class="card"><p class="eyebrow">Block ' + p.block.no + ' · seit ' + esc(dshort(p.block.started)) + '</p><h2>' + esc(M.name) + '</h2>' + blockSegs() + '<p>' + M.desc + '</p>' +
     '<label class="lab">Modell</label><div class="chips">' + Object.entries(MODELS).map(([k, m]) => '<button class="chip" data-act="p-model" data-v="' + k + '" aria-pressed="' + (p.model === k) + '">' + m.name + '</button>').join('') + '</div>' +
     '<details><summary>Wie die Gewichte berechnet werden</summary><div class="stack" style="padding:6px 0">' +
@@ -247,6 +250,13 @@ function vPeri() {
     '<p><b>Zwei schwache Einheiten in Folge</b> (Limit oder Wiederholungen deutlich verfehlt) senken das 1RM moderat, eine einzelne nur das nächste Gewicht um eine Stufe.</p>' +
     '<p>Am Blockende steigt das 1RM um 2,5 kg (Oberkörper) bzw. 5 kg (Beine, Kreuzheben), wenn du in mindestens 75 % der Einheiten alle Wiederholungen geschafft hast.</p>' +
     '<p>Isolationsübungen: erst die Wiederholungen bis zum oberen Ende steigern, dann das Gewicht. Nach mindestens 14 Tagen Pause startet die nächste Einheit 10 % leichter.</p></div></details></div>';
+  if (p.model === 'season') {
+    const ol = seasonOutlook(p), beh = seasonBehind(p);
+    h += '<div class="card"><h2>Saisonplan bis ' + (p.season ? esc(dshort(p.season)) : '–') + '</h2>' + (p.season ? '' : '<p class="hint">Saisonstart unter Mehr → Einstellungen eintragen.</p>') +
+      '<div class="sphl">' + ol.map(b => '<div class="sph' + (b.cur ? ' cur' : '') + '"><div class="sph-h"><b>' + esc(PHASES[b.phase]) + '</b>' + (b.cur ? '<span class="swtag">aktuell</span>' : '') + '<small>' + esc(dshort(b.from)) + ' – ' + esc(dshort(addDays(b.until, -1))) + ' · ' + b.weeks + ' Wo.</small></div><small>' + esc(PHASE_TXT[b.phase]) + '</small></div>').join('') +
+      (p.season ? '<div class="sph"><div class="sph-h"><b>Saison</b><small>ab ' + esc(dshort(p.season)) + '</small></div><small>Wakeboarden' + (p.seasonPause !== false ? ', Gym-Pause' : '') + '</small></div>' : '') + '</div>' +
+      '<p class="hint" style="margin-top:8px">' + (beh >= 1 ? 'Du liegst ca. ' + beh + ' Woche' + (beh > 1 ? 'n' : '') + ' hinter dem Block. Ab 2 Wochen Rückstand überspringt die App eine Arbeitswoche, damit Maximalkraft und Power bis zum Saisonstart passen. ' : 'Im Plan. ') + 'Gezählt werden die tatsächlich gemachten Einheiten. Jeder neue Block wird nach der verbleibenden Zeit geplant: Phasenfenster vor dem Saisonstart sind Maximalkraft 9 Wochen, Power 7 Wochen, Tapering 1 Woche, davor Grundlage.</p></div>';
+  }
   const pp = p.prep || {};
   h += '<div class="card"><h2>Einstiegsphase</h2><p class="sub">Nach Pause, Krankheit oder zum Neustart: steigert die Arbeitssätze von 1 auf 3 und die Last von 60 auf 70 %, bevor der Block beginnt. Diese Einheiten zählen nicht zum Block und nicht zur Blockauswertung.</p>' +
     (pp.on ? '<p style="margin-top:8px"><b>Läuft:</b> Einheit ' + ((pp.n || 0) + 1) + ' von ' + pp.weeks * d + '</p><label class="lab">Dauer</label><div class="chips">' + [1, 2, 3].map(w => '<button class="chip" data-act="prep-wk" data-v="' + w + '" aria-pressed="' + (pp.weeks === w) + '">' + w + ' Wo.</button>').join('') + '</div><button class="btn ghost wide" style="margin-top:10px" data-act="prep-off">Einstiegsphase beenden</button>'

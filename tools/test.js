@@ -1,7 +1,7 @@
 /* Logik-Tests ohne Browser: simuliert zwei komplette Blöcke für jedes Modell und jeden Split */
 const fs = require('fs'), vm = require('vm'), path = require('path'), assert = require('assert');
 const code = fs.readFileSync(path.join(__dirname, '../src/logic.js'), 'utf8') + fs.readFileSync(path.join(__dirname, '../src/plans.js'), 'utf8') + fs.readFileSync(path.join(__dirname, '../src/records.js'), 'utf8').replace("'use strict';", '') + fs.readFileSync(path.join(__dirname, '../src/volume.js'), 'utf8').replace("'use strict';", '') +
-  ';globalThis.T={EX,EXLIST,TPL,SPLITS,MODELS,MAIN_LIFTS,GRIP_ROT,defaultProfile,buildWorkout,PROG_TPL,programFromTemplate,ensurePrograms,nextPlan,activeProgram,blockSessions,applyProgress,closeBlock,startNextBlock,estimateFromBW,EPLEY,plateCalc,warmups,recordsOf,newRecords,sessRecords,recordEvents,prepPr,volEvaluate,applyVol,sweetSpot,plateaus,mondayOf,addDays,todayStr};';
+  ';globalThis.T={EX,EXLIST,TPL,SPLITS,MODELS,MAIN_LIFTS,GRIP_ROT,defaultProfile,buildWorkout,PROG_TPL,programFromTemplate,ensurePrograms,nextPlan,activeProgram,blockSessions,applyProgress,closeBlock,startNextBlock,estimateFromBW,EPLEY,plateCalc,warmups,recordsOf,newRecords,sessRecords,recordEvents,prepPr,nextSeasonBlock,seasonCatchUp,seasonBehind,phaseWeeks,volEvaluate,applyVol,sweetSpot,plateaus,mondayOf,addDays,todayStr};';
 const ctx = {console, Intl, Math, Date}; vm.createContext(ctx); vm.runInContext(code, ctx); const T = ctx.T;
 for (const t of Object.values(T.TPL)) t.ex.forEach(id => assert(T.EX[id], 'Übung fehlt: ' + id));
 T.GRIP_ROT.forEach(id => assert(T.EX[id], 'Griff-Übung fehlt: ' + id));
@@ -94,3 +94,33 @@ console.log('OK: Rekorde');
   assert.strictEqual(q.e1.bankdruecken, 100, 'Topsatz nach Plan bestätigt das 1RM');
 }
 console.log('OK: Volumensteuerung, Plateau, Topsatz');
+
+/* Saisonplan: Blockfolge bis 01.05.2027, Verschiebung bei Ausfällen, Aufholen bei Rückstand */
+{
+  const p = T.defaultProfile(); Object.assign(p, {model:'season', season:'2027-05-01', days:[0, 2, 4], done:true});
+  const seq = []; let from = '2026-11-14';
+  for (let i = 0; i < 10 && from < p.season; i++) { const b = T.nextSeasonBlock(p, from); seq.push(b.phase + b.len); from = b.until; }
+  assert.strictEqual(seq.join(), 'base7,max6,max3,power7,taper1', 'Blockfolge ab Einstiegsende: ' + seq.join()); assert.strictEqual(T.nextSeasonBlock(p, '2027-04-20').until, '2027-05-01', 'Tapering bis Saisonstart');
+  /* 3 Wochen zu spät aus dem Grundlagenblock: Maximalkraft wird kürzer, Power bleibt */
+  const late = T.nextSeasonBlock(p, '2027-01-23'); assert(late.phase === 'max' && late.len === 6, 'nach Verspätung: ' + late.phase + late.len);
+  const late2 = T.nextSeasonBlock(p, '2027-03-06'); assert(late2.phase === 'power' && late2.len === 7);
+  const mx = T.phaseWeeks('max', 6); assert(mx[4].top && mx[5].deload && mx[0].sets === 5 && mx[0].reps === 5 && mx[4].reps === 3, 'Maximalkraft-Schema');
+  /* Rückstand: Block soll heute enden, 4 Wochen offen → eine Arbeitswoche übersprungen */
+  p.block = {n:3, no:1, e1Start:{}, wk:T.phaseWeeks('base', 6), phase:'base', until:T.addDays(T.todayStr(), 7), planStart:T.addDays(T.todayStr(), -35)};
+  assert(T.seasonBehind(p) >= 2); const cu = T.seasonCatchUp(p); assert(cu && p.block.n === 6, 'Aufholen: n=' + p.block.n);
+  /* Power-Phase: Kontrast (Grundübung vor Sprung), Runden-Simulation */
+  const q = T.defaultProfile(); Object.assign(q, {model:'season', season:T.addDays(T.todayStr(), 35), days:[0, 2, 4], done:true, wake:true}); q.e1 = {kniebeuge:120, bankdruecken:100, kreuzheben:150, ohp:60, 'lh-rudern':80};
+  q.programs = [T.programFromTemplate('wake3')]; q.prog = q.programs[0].id; T.ensurePrograms(q);
+  const w = T.buildWorkout(q, [], 0, q.programs[0].plans[0].id); const ix = w.items.map(x => x.exId);
+  assert.strictEqual(w.pr.phase, 'power'); assert(ix.indexOf('kniebeuge') < ix.indexOf('box-jump') && w.items[ix.indexOf('kniebeuge')].ss, 'Kontrast Kniebeuge → Box Jump: ' + ix.join());
+  const wc = T.buildWorkout(q, [], 0, q.programs[0].plans[2].id), hh = wc.items.find(x => x.exId === 'handle-hold'); assert(hh && hh.sets === 6 && hh.reps === 25 && hh.rest === 40, 'Runden-Simulation');
+}
+console.log('OK: Saisonplan (Blockfolge, Verschiebung, Aufholen, Power-Phase)');
+
+{ /* Plan-Reihenfolge: nach Plan A ist B dran, nach C wieder A, egal welcher Wochentag */
+  const p = T.defaultProfile(); p.days = [0, 2, 4]; T.ensurePrograms(p); const pl = T.activeProgram(p).plans;
+  assert.strictEqual(T.nextPlan(p, []).plan.id, pl[0].id, 'ohne Einheiten: Plan A');
+  assert.strictEqual(T.nextPlan(p, [{date:'2026-10-01', planId:pl[0].id}]).plan.id, pl[1].id, 'nach A: B');
+  assert.strictEqual(T.nextPlan(p, [{date:'2026-10-01', planId:pl[2].id}]).plan.id, pl[0].id, 'nach C: A');
+}
+console.log('OK: Plan-Reihenfolge nach tatsächlichen Einheiten');

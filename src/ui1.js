@@ -22,6 +22,7 @@ function normProfile(p) {
   if (!Array.isArray(p.days) || p.days.length < 2) p.days = [0,2,4];
   p.days = p.days.slice(0, 6).sort((a, b) => a - b);
   if (!MODELS[p.model]) p.model = 'linear';
+  if (p.model === 'season' && p.block) ensureSeason(p);
   return p;
 }
 function lsSave() { const j = JSON.stringify({app:'eisenbuch', p:S.p, sessions:S.sessions, runs:S.runs, grip:S.grip, body:S.body, wake:S.wake}); tryLS(() => localStorage.setItem(LS, j)); Nat.autosave(j); }

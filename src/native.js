@@ -85,10 +85,12 @@ const Nat = {
     const paused = typeof inSeasonPause === 'function' && inSeasonPause();
     const list = [], total = blockSessions(S.p), hm = (S.p.time || '18:00').split(':').map(Number);
     let n = S.p.block.n;
+    const np0 = nextPlan(S.p, S.sessions), pls = activeProgram(S.p).plans; let k = np0 ? pls.indexOf(np0.plan) : 0;
     for (let i = 0; i < 28 && list.length < 20; i++) {
-      const d = addDays(todayStr(), i), pl = planForDate(S.p, d); if (!pl) continue;
+      const d = addDays(todayStr(), i); if (!planForDate(S.p, d)) continue;
       if (paused || (typeof inSeasonPause === 'function' && inSeasonPause(d))) continue; /* Wake-Saison: keine Gym-Erinnerungen */
       if (i === 0 && S.sessions.some(s => s.date === d)) continue;
+      const pl = pls[(k++) % pls.length]; /* Reihenfolge nach tatsächlich trainierten Plänen */
       const at = parseD(d); at.setHours(hm[0], hm[1], 0, 0); at.setMinutes(at.getMinutes() - (r.lead || 0));
       if (at.getTime() < Date.now() + 60000) continue;
       let body = 'Block geschafft: Auswertung und nächster Block warten.';

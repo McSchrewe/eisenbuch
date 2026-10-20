@@ -15,9 +15,12 @@ const GTESTS = {
     why:'Maximale Greifkraft je Hand. Zeigt auch Unterschiede zwischen links und rechts.'},
   carry:{name:"Farmer's Hold", unit:'s', kind:'time', load:true,
     how:'Zwei Kurzhanteln mit festem Gewicht stehend halten, bis du absetzen musst. Bei jedem Test dasselbe Gewicht nehmen.',
-    why:'Griffausdauer unter Last, ohne Klimmzugstange.'}
+    why:'Griffausdauer unter Last, ohne Klimmzugstange.'},
+  hhold:{name:'Handle-Hold 50 % KG', unit:'s', kind:'time', load:true,
+    how:'Kabelzug mit Seilgriff oder Handle auf Hüfthöhe, Gewicht ca. 50 % deines Körpergewichts, immer dasselbe. Handle an die Hüfte ziehen, Ellbogen ca. 90°, leicht in Fahrposition zurücklehnen und halten bis zum Loslassen.',
+    why:'Misst genau die Zugkraft-Ausdauer, die beim Ranziehen des Handles für Backroll und Air-Tricks fehlt.'}
 };
-const GORDER = ['hang','towel','rep','dyn','carry'];
+const GORDER = ['hang','towel','rep','hhold','dyn','carry'];
 /* Referenz: Steiber 2016 (PLoS ONE), deutsche Männer, höchster Wert beider Hände */
 const DYN_REF = [[25,29,52],[30,34,54],[35,39,54],[40,44,53],[45,49,52]];
 
