@@ -411,6 +411,8 @@ h3 .trom{width:28px;height:28px}.h3 .trom svg{width:18px}
 .swr small{color:var(--mute);text-align:right}
 .swt{height:10px;border-radius:5px;background:var(--soft);overflow:hidden}.swt b{display:block;height:100%;background:var(--acc);border-radius:5px}.swt b.neg{background:var(--heavy)}
 .swr.best span{color:var(--acc);font-weight:700}.swr.best .swt b{background:var(--play)}
+.rpt{background:var(--soft);border-radius:20px;padding:14px;text-align:center;margin-top:6px}
+.rpt [data-rpp]{font:600 22px var(--fd);color:var(--acc)}
 .sphl{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .sph{padding:9px 12px;border-radius:12px;background:var(--soft)}
 .sph.cur{background:var(--acc-soft);box-shadow:inset 0 0 0 1px var(--acc)}

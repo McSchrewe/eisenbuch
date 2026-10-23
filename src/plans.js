@@ -12,7 +12,7 @@ const PROG_TPL = {
   wake3:{name:'Wakeboard Ganzkörper 3×', desc:'Mo/Mi/Fr, ca. 75 min. Zugbetont (Rudern in jeder Einheit), Rumpf gegen Rotation, Schulterstabilität, Landetraining, Griff.',
     plans:[
       ['Wake A · Squat', [0], ['box-jump','kniebeuge','lh-rudern','bankdruecken','rdl','face-pull','pallof','farmers']],
-      ['Wake B · Deadlift', [2], ['skater','kreuzheben','klimmzuege','kh-rudern','split-squat','sd-kh','woodchop','towel-hang']],
+      ['Wake B · Deadlift', [2], ['skater','kreuzheben','klimmzuege','kh-rudern','split-squat','sd-kh','woodchop','dead-hang']],
       ['Wake C · Handle', [4], ['box-jump','frontkniebeuge','seil-rudern','handle-hold','latzug-eng','hip-thrust','schraegbank-kh','reverse-fly-kh','hanging-leg']]
     ]},
   fb3:{name:'Ganzkörper 3×', desc:'Drei Ganzkörper-Einheiten, Mo/Mi/Fr. Ideal für den Einstieg.',

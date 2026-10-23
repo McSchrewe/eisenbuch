@@ -55,7 +55,12 @@ function vFocus(i) {
   h += '<div class="fbig"><div class="fset"><small>Satz</small><b class="num">' + (s.warm ? 'A' : wn) + '</b><small>/ ' + pg.all + '</small></div><div class="fsteps">' +
     (noKg ? '' : stepper(i, si, 'kg', mode === 'bw' || (mode === 'time' && e.eq === 'KG') ? 'Zusatz' : 'Gewicht', s.kg, 'kg', mode === 'bw' ? '0' : 'kg')) +
     stepper(i, si, 'reps', mode === 'time' ? 'Dauer' : (pl.unit || 'Wdh.'), s.reps, mode === 'time' ? 's' : '×', '0') + '</div></div>';
-  h += '<button class="bigchk' + (s.done ? ' done' : '') + '" data-act="set-done" data-i="' + i + '" data-s="' + si + '" aria-label="' + (s.done ? 'Satz zurücksetzen' : 'Satz erledigt') + '">' + I(ICONS.check) + '</button>' +
+  if (pl.unit === 'Zyklen') { /* Repeaters: Timer zählt die vollen Hänge */
+    const r = S.rpT && S.rpT.i === i ? S.rpT : null;
+    h += r ? '<div class="rpt"><p class="readout" data-rpp>Greifen</p><div class="big" data-rpt>3</div><p class="sub" data-rpn>0 volle Hänge</p><button class="btn wide" style="min-height:64px;font-size:20px;margin-top:10px" data-act="rp-stop">Losgelassen</button><p class="hint" style="margin-top:6px">Stoppt automatisch nach ' + r.max + ' Hängen. Gezählt werden nur volle 7-s-Hänge.</p></div>'
+      : (s.done ? '' : '<button class="btn wide" style="min-height:56px;margin-top:6px" data-act="rp-go" data-v="' + i + '">▶ 7/3-Timer: Serie starten</button><p class="hint" style="text-align:center;margin:6px 0 10px">Ziel 4–6 volle Hänge. Schaffst du in allen Serien 6, kommt beim nächsten Mal Zusatzgewicht dazu.</p>');
+  }
+  if (!(S.rpT && S.rpT.i === i)) h += '<button class="bigchk' + (s.done ? ' done' : '') + '" data-act="set-done" data-i="' + i + '" data-s="' + si + '" aria-label="' + (s.done ? 'Satz zurücksetzen' : 'Satz erledigt') + '">' + I(ICONS.check) + '</button>' +
     '<p class="hint" style="text-align:center;margin:6px 0 0">' + (s.done ? 'Erledigt. Antippen setzt den Satz zurück.' : 'Satz erledigt? Haken antippen. Pause ' + fmtDur(restFor(it) * 1000) + '.') + '</p>';
   if (pg.done === pg.all && pg.all) h += '<div class="card" style="margin-top:14px"><h3>Übung fertig</h3><p class="sub" style="margin-top:4px">Wie viele Wiederholungen wären im letzten Satz noch gegangen? Steuert die Gewichte der nächsten Wochen.</p><div class="chips">' + RIR_FEEL.map(f => '<button class="chip" data-act="feel" data-i="' + i + '" data-v="' + f[0] + '" aria-pressed="' + (it.feel === f[0]) + '">' + f[1] + '</button>').join('') + '</div></div>';
   else h += '<div class="chips" style="margin-top:14px;justify-content:center">' + RIR_FEEL.map(f => '<button class="chip sm" data-act="feel" data-i="' + i + '" data-v="' + f[0] + '" aria-pressed="' + (it.feel === f[0]) + '">' + f[1] + '</button>').join('') + '</div>';
@@ -64,7 +69,6 @@ function vFocus(i) {
   const tools = [];
   if ((mode === 'pct' || (mode === 'dp' && pl.kg)) && ['LH','KH','MA','KB'].includes(e.eq) && !it.sets.some(q => q.warm)) tools.push('<button class="link" data-act="warm" data-i="' + i + '">Aufwärmsätze</button>');
   if (e.eq === 'LH') tools.push('<button class="link" data-act="plates" data-i="' + i + '">Scheiben</button>');
-  if (pl.unit === 'Zyklen') tools.push('<button class="link" data-act="rp-timer" data-v="' + i + '">' + (S.rpT ? 'Timer stoppen' : '7/3-Timer starten') + '</button>');
   tools.push('<button class="link" data-act="set-add" data-i="' + i + '">+ Satz</button>');
   if (it.sets.length > 1) tools.push('<button class="link" data-act="set-rm" data-i="' + i + '">− Satz</button>');
   tools.push('<button class="link" data-act="w-swap" data-i="' + i + '">Tauschen</button>', '<button class="link" data-act="w-rm" data-i="' + i + '"' + (S.ui.rmI === i ? ' style="color:var(--heavy)">Wirklich entfernen?' : '>Entfernen') + '</button>');

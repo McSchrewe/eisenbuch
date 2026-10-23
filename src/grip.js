@@ -8,19 +8,19 @@ const GTESTS = {
     how:'Zwei Handtücher über die Stange hängen, je eine Hand fest um ein Handtuch. Halten bis zum Loslassen.',
     why:'Dicker, nachgebender Griff. Kommt dem Handle am Seil am nächsten.'},
   rep:{name:'Repeaters 7/3', unit:'Hänge', kind:'rep',
-    how:'7 s hängen, 3 s Pause, im Wechsel. Der Timer gibt die Signale. Gezählt werden volle 7-s-Hänge, bis du nicht mehr hältst.',
+    how:'7 s hängen, 3 s Pause, im Wechsel. Der Timer gibt die Signale. Gezählt werden volle 7-s-Hänge, bis du nicht mehr hältst. Ein angefangener Hang zählt nicht; die Zeit unter Spannung ist Hänge × 7 s.',
     why:'Ausdauer bei wiederholter Belastung, wie viele Starts, Kurven und Sprünge hintereinander.'},
   dyn:{name:'Handdynamometer', unit:'kg', kind:'lr',
     how:'Stehend, Arm locker neben dem Körper, Ellbogen leicht gebeugt. Je Hand 2 Versuche, der bessere zählt.',
     why:'Maximale Greifkraft je Hand. Zeigt auch Unterschiede zwischen links und rechts.'},
   carry:{name:"Farmer's Hold", unit:'s', kind:'time', load:true,
-    how:'Zwei Kurzhanteln mit festem Gewicht stehend halten, bis du absetzen musst. Bei jedem Test dasselbe Gewicht nehmen.',
+    how:'Zwei Kurzhanteln mit festem Gewicht stehend halten, bis du absetzen musst. Bei jedem Test dasselbe Gewicht nehmen.', loadLabel:'Gewicht pro Hand',
     why:'Griffausdauer unter Last, ohne Klimmzugstange.'},
-  hhold:{name:'Handle-Hold 50 % KG', unit:'s', kind:'time', load:true,
-    how:'Kabelzug mit Seilgriff oder Handle auf Hüfthöhe, Gewicht ca. 50 % deines Körpergewichts, immer dasselbe. Handle an die Hüfte ziehen, Ellbogen ca. 90°, leicht in Fahrposition zurücklehnen und halten bis zum Loslassen.',
+  hhold:{name:'Handle-Hold zweihändig', unit:'s', kind:'time', load:true, loadLabel:'Gewicht am Kabel (gesamt)',
+    how:'Kabelzug mit Handle oder Stange auf Hüfthöhe, beide Hände wie am Wakeboard-Handle. Gewicht so wählen, dass du ca. 30–60 s schaffst (Richtwert 70–90 % deines Körpergewichts), danach immer dasselbe. Handle an die Hüfte ziehen, Ellbogen ca. 90°, leicht in Fahrposition zurücklehnen und halten bis zum Loslassen.',
     why:'Misst genau die Zugkraft-Ausdauer, die beim Ranziehen des Handles für Backroll und Air-Tricks fehlt.'}
 };
-const GORDER = ['hang','towel','rep','hhold','dyn','carry'];
+const GORDER = ['dyn','hang','hhold','rep','towel','carry']; /* nicht ermüdend zuerst, dann Haltekraft, dann spezifische Ausdauer */
 /* Referenz: Steiber 2016 (PLoS ONE), deutsche Männer, höchster Wert beider Hände */
 const DYN_REF = [[25,29,52],[30,34,54],[35,39,54],[40,44,53],[45,49,52]];
 
@@ -68,7 +68,7 @@ function vGrip() {
   const p = S.p, due = gripDue(), w = seasonWeeks(), ph = seasonPhase();
   let h = '<div class="row" style="margin:0 0 10px"><span class="sub">' + (w !== null && w > 0 ? 'Wakeboard-Saison · noch ' + w + ' Wochen' : 'Wakeboard-Saison') + '</span>' + (ph ? '<span class="tag">Phase ' + ph.n + '</span>' : '') + '</div>';
   h += '<div class="card"><p class="eyebrow">' + (due.first ? 'Erster Test' : due.due ? 'Test fällig' : 'Nächster Test in ' + due.days + ' Tag' + (due.days === 1 ? '' : 'en')) + '</p><h3>Test-Paket: ' + p.gripSet.map(t => GTESTS[t].name).join(', ') + '</h3>' +
-    '<p class="sub" style="margin-top:6px">Ausgeruht testen: an einem Ruhetag oder vor dem Training, nie nach Kreuzheben oder Klimmzügen. Vorher 5 min aufwärmen, zwischen den Tests mindestens 3 min Pause. Dauer ca. ' + (p.gripSet.length * 4 + 5) + ' min.</p>' +
+    '<p class="sub" style="margin-top:6px">Ausgeruht testen: an einem Ruhetag oder vor dem Training, nie nach Kreuzheben oder Klimmzügen. Vorher 5 min aufwärmen, zwischen den Tests 10 min Pause. Dauer ca. ' + (p.gripSet.length * 3 + Math.max(0, p.gripSet.length - 1) * 10 + 5) + ' min. Lieber 2 Tests sauber als 4 müde.</p>' +
     '<button class="btn wide" style="margin-top:10px" data-act="g-start">Geführten Test starten</button>' +
     '<div class="row" style="justify-content:center;margin-top:6px"><button class="link" data-act="g-manual">Wert von Hand eintragen</button></div></div>';
   if (ph) h += '<div class="card flat"><p><b>Phase ' + ph.n + ':</b> ' + ph.t + '</p>' + (!p.wake ? '<button class="btn sm" style="margin-top:6px" data-act="g-wake">Griff-Finisher in jede Einheit einbauen</button>' : '<p class="hint">Wakeboard-Fokus ist an: Jede Einheit endet mit einer Griffübung im Wechsel (Dead Hang, Farmer\'s Hold, Handtuch-Hang, Scheiben-Pinch, Wrist Roller, Reverse Curls).</p>') + '</div>';
@@ -95,7 +95,7 @@ function beep(f, ms) {
 }
 function buzz(p) { if (NATIVE) { Nat.vib(Array.isArray(p) ? 300 : p); return; } try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} }
 function gtStart() {
-  S.gt = {types:S.p.gripSet.slice().sort((a, b) => GORDER.indexOf(a) - GORDER.indexOf(b)), i:0, st:'idle', res:[], kg:S.ui.lastCarryKg || ''};
+  S.gt = {types:S.p.gripSet.slice().sort((a, b) => GORDER.indexOf(a) - GORDER.indexOf(b)), i:0, st:'idle', res:[], kg:''};
   S.ui.sheet = {t:'gtest'}; renderSheet();
 }
 function gtCur() { return S.gt.types[S.gt.i]; }
@@ -139,13 +139,13 @@ function gtSave() {
     const v = parseNum($('#gt-v').value);
     if (!(v > 0)) { toast(T.kind === 'rep' ? 'Anzahl voller Hänge eintragen.' : 'Zeit in Sekunden eintragen.'); return; }
     e.v = Math.round(v);
-    if (T.load) { const kg = parseNum($('#gt-kg').value); if (!(kg > 0)) { toast('Gewicht pro Hand eintragen.'); return; } e.kg = kg; S.ui.lastCarryKg = kg; }
+    if (T.load) { const kg = parseNum($('#gt-kg').value); if (!(kg > 0)) { toast((T.loadLabel || 'Gewicht') + ' eintragen.'); return; } e.kg = kg; S.p.gripKg = Object.assign(S.p.gripKg || {}, {[type]:kg}); saveProfile(); }
   }
   const prev = gripHist(type); const pv = prev.length ? gripVal(prev[prev.length - 1]) : null;
   S.grip.push(e); saveGrip(e); setTimeout(() => checkBadges(), 400); g.res.push({type, v:gripVal(e), prev:pv, best:prev.length ? Math.max(...prev.map(gripVal)) : null});
   g.i++;
   if (g.i >= g.types.length) { g.st = 'end'; }
-  else { g.st = 'pause'; g.pend = Date.now() + 180000; clearInterval(GT.timer); GT.timer = setInterval(gtTick, 250); }
+  else { g.st = 'pause'; g.pend = Date.now() + 600000; clearInterval(GT.timer); GT.timer = setInterval(gtTick, 250); }
   renderSheet();
 }
 function gtHTML() {
@@ -158,10 +158,11 @@ function gtHTML() {
   }
   const type = gtCur(), T = GTESTS[type];
   let h = '<p class="eyebrow">Test ' + (g.i + 1) + ' von ' + g.types.length + '</p><h2>' + T.name + '</h2>';
-  if (g.st === 'pause') return h + '<p>Pause vor dem nächsten Test. Unterarme locker ausschütteln.</p><div class="big" data-gclock>3:00</div><div class="stack" style="margin-top:12px"><button class="btn wide" data-act="g-skip-pause">Pause beenden</button></div>' + gtAbort();
+  if (g.st === 'pause') return h + '<p>Pause vor dem nächsten Test. Unterarme locker ausschütteln.</p><div class="big" data-gclock>10:00</div><p class="hint">10 min, damit die Unterarme sich erholen. Sonst misst der nächste Test vor allem die Ermüdung.</p><div class="stack" style="margin-top:12px"><button class="btn wide" data-act="g-skip-pause">Pause beenden</button></div>' + gtAbort();
   h += '<p>' + T.how + '</p>';
   if (T.kind === 'lr') return h + '<div class="pair" style="margin-top:10px"><div><label class="lab" for="gt-l">Links (kg)</label><div class="fld"><input id="gt-l" inputmode="decimal" placeholder="kg"><span>kg</span></div></div><div><label class="lab" for="gt-r">Rechts (kg)</label><div class="fld"><input id="gt-r" inputmode="decimal" placeholder="kg"><span>kg</span></div></div></div><button class="btn wide" style="margin-top:12px" data-act="g-save">Speichern und weiter</button>' + gtAbort();
-  const load = T.load ? '<label class="lab" for="gt-kg">Gewicht pro Hand</label><div class="fld"><input id="gt-kg" inputmode="decimal" value="' + esc(g.kg) + '" data-in="gkg" placeholder="z. B. 24"><span>kg</span></div>' : '';
+  const lastKg = g.kg || (S.p.gripKg && S.p.gripKg[gtCur()]) || '';
+  const load = T.load ? '<label class="lab" for="gt-kg">' + (T.loadLabel || 'Gewicht') + (lastKg ? ' (wie beim letzten Test)' : '') + '</label><div class="fld"><input id="gt-kg" inputmode="decimal" value="' + esc(lastKg) + '" data-in="gkg" placeholder="' + (gtCur() === 'hhold' && S.p.bw ? 'z. B. ' + fmt(Math.round(S.p.bw * 0.8 / 2.5) * 2.5) : 'z. B. 24') + '"><span>kg</span></div>' : '';
   if (g.st === 'idle') return h + load + '<button class="btn wide" style="margin-top:12px" data-act="g-go">Start (3 s Countdown)</button><p class="hint" style="margin-top:6px">Ton an: Der Timer piept beim Start' + (T.kind === 'rep' ? ' und bei jedem Wechsel zwischen Halten und Pause' : '') + '. Am Handy zusätzlich Vibration, wo verfügbar.</p>' + gtAbort();
   if (g.st === 'cd') return h + '<div class="big" data-gclock>3</div><p class="sub">Greifen und bereit machen</p>';
   if (g.st === 'run') return h + (T.kind === 'rep' ? '<p class="readout" data-gphase>Halten</p><div class="big" data-gclock>7 s</div><p class="readout" data-gcount>0 volle Hänge</p>' : '<div class="big" data-gclock>0:00</div>') +
@@ -175,14 +176,14 @@ function gManualHTML() {
   return '<h2>Griffwert eintragen</h2><label class="lab" for="gm-type">Test</label><select id="gm-type" data-chg="gmtype">' + GORDER.map(t => '<option value="' + t + '"' + (t === f.type ? ' selected' : '') + '>' + GTESTS[t].name + '</option>').join('') + '</select>' +
     '<label class="lab" for="gm-date">Datum</label><input type="date" id="gm-date" value="' + todayStr() + '">' +
     (T.kind === 'lr' ? '<div class="pair"><div><label class="lab" for="gt-l">Links (kg)</label><input type="text" id="gt-l" inputmode="decimal"></div><div><label class="lab" for="gt-r">Rechts (kg)</label><input type="text" id="gt-r" inputmode="decimal"></div></div>' :
-      (T.load ? '<label class="lab" for="gt-kg">Gewicht pro Hand (kg)</label><input type="text" id="gt-kg" inputmode="decimal" value="' + esc(S.ui.lastCarryKg || '') + '">' : '') + '<label class="lab" for="gt-v">Ergebnis (' + T.unit + ')</label><input type="text" id="gt-v" inputmode="numeric">') +
+      (T.load ? '<label class="lab" for="gt-kg">' + (T.loadLabel || 'Gewicht') + ' (kg)</label><input type="text" id="gt-kg" inputmode="decimal" value="' + esc((S.p.gripKg && S.p.gripKg[S.ui.gm && S.ui.gm.type]) || '') + '">' : '') + '<label class="lab" for="gt-v">Ergebnis (' + T.unit + ')</label><input type="text" id="gt-v" inputmode="numeric">') +
     '<button class="btn wide" style="margin-top:12px" data-act="gm-save">Speichern</button><button class="btn ghost wide" style="margin-top:8px" data-act="close">Abbrechen</button>';
 }
 function gmSave() {
   const type = S.ui.gm.type, T = GTESTS[type], date = $('#gm-date').value || todayStr();
   const e = {id:uid('g'), type, date, t:parseD(date).getTime() + 43200000};
   if (T.kind === 'lr') { e.l = parseNum($('#gt-l').value); e.r = parseNum($('#gt-r').value); if (!(e.l > 0 && e.r > 0)) { toast('Beide Hände eintragen, in kg.'); return; } }
-  else { e.v = parseNum($('#gt-v').value); if (!(e.v > 0)) { toast('Ergebnis eintragen.'); return; } if (T.load) { e.kg = parseNum($('#gt-kg').value); if (!(e.kg > 0)) { toast('Gewicht pro Hand eintragen.'); return; } } }
+  else { e.v = parseNum($('#gt-v').value); if (!(e.v > 0)) { toast('Ergebnis eintragen.'); return; } if (T.load) { e.kg = parseNum($('#gt-kg').value); if (!(e.kg > 0)) { toast('Gewicht eintragen.'); return; } } }
   S.grip.push(e); saveGrip(e); S.ui.sheet = null; render(); toast(T.name + ' gespeichert.');
 }
 function gListHTML(type) {

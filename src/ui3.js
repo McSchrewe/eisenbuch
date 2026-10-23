@@ -41,6 +41,7 @@ function startWorkout(free, planId, ready) {
   if (free) openPicker({mode:'wadd'});
 }
 function finishWorkout() {
+  rpStop(false);
   const a = S.active, p = S.p, end = Date.now();
   const ex = a.items.map(it => ({exId:it.exId, plan:it.plan, feel:it.feel, sets:it.sets.filter(s => s.done).map(s => ({kg:s.kg || 0, reps:s.reps || 0, done:true, warm:!!s.warm, top:!!s.top}))})).filter(x => x.sets.length);
   if (!ex.length) { toast('Noch kein Satz abgehakt. Hake erledigte Sätze mit ✓ ab oder verwirf das Training.'); return; }
@@ -55,6 +56,24 @@ function finishWorkout() {
   S.active = null; S.rest = null; Nat.restSchedule(); saveActive(); saveProfile(); saveSession(sess); unwake();
   S.ui.sheet = {t:'summary', sess, prs, ch, prepDone};
   render(); checkBadges();
+}
+
+/* ----- Repeaters-Timer ----- */
+function rpTick() {
+  const r = S.rpT; if (!r) return; const now = Date.now(), el = now - r.t0;
+  const ph = $('[data-rpp]'), ck = $('[data-rpt]'), n = $('[data-rpn]');
+  if (el < 0) { const s = Math.ceil(-el / 1000); if (s !== r.lastSec) { r.lastSec = s; beep(520, 110); } if (ph) ph.textContent = 'Greifen'; if (ck) ck.textContent = s; return; }
+  const cyc = Math.floor(el / 10000), inHang = el % 10000 < 7000, idx = cyc * 2 + (inHang ? 0 : 1);
+  if (idx !== r.lastIdx) { if (inHang) { beep(1040, 200); Nat.vib(90); } else { beep(440, 200); Nat.vib(40); } r.lastIdx = idx; }
+  r.done = cyc + (inHang ? 0 : 1);
+  if (r.done >= r.max) { rpStop(true); return; }
+  const left = inHang ? 7 - Math.floor(el % 10000 / 1000) : 10 - Math.floor(el % 10000 / 1000);
+  if (ph) ph.textContent = inHang ? 'Hängen' : 'Pause'; if (ck) ck.textContent = left + ' s'; if (n) n.textContent = r.done + ' volle Hänge · ' + r.done * 7 + ' s unter Spannung';
+}
+function rpStop(save) {
+  const r = S.rpT; if (!r) return; clearInterval(r.h); S.rpT = null;
+  if (save && S.active && r.done > 0) { const it = S.active.items[r.i], s = it.sets[r.si]; if (s && !s.done) { s.reps = r.done; beep(1568, 300); ACT['set-done'](null, {dataset:{i:String(r.i), s:String(r.si)}}); toast(r.done + ' volle Hänge gespeichert.'); return; } }
+  renderWorkout();
 }
 
 /* ----- Trainingsansicht ----- */
@@ -326,26 +345,21 @@ const ACT = {
   'w-rm'(v, t) { const i = +t.dataset.i; if (S.ui.rmI === i) S.ui.wf = null; if (S.ui.rmI !== i) { S.ui.rmI = i; renderWorkout(); setTimeout(() => { if (S.ui.rmI === i) { S.ui.rmI = null; renderWorkout(); } }, 4000); return; } S.ui.rmI = null; S.active.items.splice(i, 1); saveActive(); renderWorkout(); },
   'w-add'() { openPicker({mode:'wadd'}); },
   'tro-x'() { hideTrophy(); },
-  /* 7/3-Timer für Repeaters: 6 Zyklen, Signal bei jedem Wechsel */
-  'rp-timer'() {
-    if (S.rpT) { clearTimeout(S.rpT.h); S.rpT = null; renderWorkout(); return; }
-    let k = 0; S.rpT = {}; renderWorkout();
-    const step = () => {
-      if (!S.rpT) return; const on = k % 2 === 0, c = Math.floor(k / 2) + 1;
-      if (c > 6) { beep(1568, 420); Nat.vib(300); toast('Serie fertig: 6 Zyklen.'); S.rpT = null; renderWorkout(); return; }
-      if (on) { beep(1175, 160); Nat.vib(80); toast('Zyklus ' + c + '/6: hängen, 7 s'); } else { beep(660, 160); toast('3 s Pause'); }
-      k++; S.rpT.h = setTimeout(step, on ? 7000 : 3000);
-    };
-    step();
+  /* 7/3-Timer für Repeaters: 3 s Countdown, dann 7 s hängen / 3 s Pause. Gezählt werden volle Hänge, Stopp bei 6 oder beim Loslassen */
+  'rp-go'(v) {
+    rpStop(false); const i = +v, it = S.active.items[i], si = it.sets.findIndex(q => !q.done); if (si < 0) { toast('Alle Serien erledigt.'); return; }
+    S.ui.ws = si; S.rpT = {i, si, t0:Date.now() + 3000, done:0, lastIdx:-2, lastSec:4, max:(it.plan.rng && it.plan.rng[1]) || 6};
+    S.rpT.h = setInterval(rpTick, 150); renderWorkout();
   },
+  'rp-stop'() { rpStop(true); },
   'prep-on'(v) { S.p.prep = {on:true, weeks:+v || 3, n:0, started:todayStr()}; S.ui.prepOne = false; saveProfile(); render(); toast('Einstiegsphase gestartet: ' + S.p.prep.weeks + ' Wochen, beginnend mit 1 Satz je Übung.'); },
   'prep-off'() { if (S.p.prep) S.p.prep.on = false; saveProfile(); render(); toast('Einstiegsphase beendet. Die nächste Einheit ist Block-Woche 1.'); },
   'prep-wk'(v) { if (S.p.prep && S.p.prep.on) { S.p.prep.weeks = +v; saveProfile(); render(); } },
   'prep-one'() { S.ui.prepOne = !S.ui.prepOne; render(); },
   fpics() { S.ui.fpics = !S.ui.fpics; renderWorkout(); },
-  'wf-open'(v) { S.ui.wf = +v; S.ui.ws = null; S.ui.fpics = false; renderWorkout(); const sc = $('#woscroll'); if (sc) sc.scrollTop = 0; },
+  'wf-open'(v) { rpStop(false); S.ui.wf = +v; S.ui.ws = null; S.ui.fpics = false; renderWorkout(); const sc = $('#woscroll'); if (sc) sc.scrollTop = 0; },
   'wf-close'() { S.ui.wf = null; renderWorkout(); },
-  'wf-go'(v) { S.ui.fpics = false; if (v === 'list') { S.ui.wf = null; } else { S.ui.wf = +v; S.ui.ws = null; } renderWorkout(); const sc = $('#woscroll'); if (sc) sc.scrollTop = 0; },
+  'wf-go'(v) { rpStop(false); S.ui.fpics = false; if (v === 'list') { S.ui.wf = null; } else { S.ui.wf = +v; S.ui.ws = null; } renderWorkout(); const sc = $('#woscroll'); if (sc) sc.scrollTop = 0; },
   'ws-sel'(v) { S.ui.ws = +v; renderWorkout(); },
   st(v, t) {
     const it = S.active.items[+t.dataset.i], s = it.sets[+t.dataset.s], f = t.dataset.f, d = +t.dataset.d, e = EX[it.exId];
@@ -577,6 +591,14 @@ if (S.p && S.p.done && (S.p.v || 1) < 3) {
     if (!(S.p.gripSet || []).includes('hhold')) S.p.gripSet = (S.p.gripSet || []).concat(['hhold']);
     if (S.p.model !== 'season') { if (S.p.block.n === 0) { S.p.model = 'season'; S.p.block.wk = null; ensureSeason(S.p); setTimeout(() => toast('Neu: Saisonplan Wakeboard ist aktiv. Details unter Mehr → Periodisierung.'), 700); } else { S.p.nextModel = 'season'; setTimeout(() => toast('Neu: Ab dem nächsten Block läuft der Saisonplan Wakeboard.'), 700); } }
   }
+  saveProfile();
+}
+/* Einmalig (Version 1.18): Griff-Test auf Dead Hang + Handle-Hold, Handtuch-Hang im Wake-Programm durch Dead Hang ersetzt */
+if (S.p && S.p.done && (S.p.v || 1) < 4) {
+  S.p.v = 4;
+  const has = t => S.grip.some(g => g.type === t);
+  if (S.p.wake) S.p.gripSet = ['hang', 'hhold'].concat((S.p.gripSet || []).filter(t => !['hang', 'hhold', 'towel'].includes(t) && has(t)));
+  (S.p.programs || []).forEach(pg => pg.plans.forEach(pl => pl.items.forEach(it => { if (it.exId === 'towel-hang' && /^Wake /.test(pl.name)) it.exId = 'dead-hang'; })));
   saveProfile();
 }
 if (S.p && S.p.done) checkBadges(true); /* bestehende Erfolge still vergeben */

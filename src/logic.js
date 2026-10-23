@@ -158,7 +158,7 @@ fat-grip|Dicker-Griff-Halten (Fat Grip)|Unterarme|LH|t
 hock-iso|Isometrische Hocke (Wakeboard-Stance)|Quadrizeps|KG|t
 box-jump|Box Jumps (weiche Landung)|Quadrizeps|KG|p
 skater|Skater-Sprünge (einbeinige Landung)|Quadrizeps|KG|p
-handle-hold|Handle-Hold (Rudern am Seilgriff halten)|Rücken|KB|t
+handle-hold|Handle-Hold zweihändig (Kabel, Hüfthöhe)|Rücken|KB|t
 repeaters|Repeaters 7/3 s (Hang-Zyklen)|Unterarme|KG|
 seil-rudern|Rudern am Seilgriff (Kabel)|Rücken|KB|c
 power-clean|Power Clean|Ganzkörper|LH|cl
@@ -179,10 +179,10 @@ RAW.trim().split('\n').forEach(line => {
   if (f[5]) { const b = f[5].split(':'); e.base = b[0]; e.ratio = parseFloat(b[1]); }
   EX[e.id] = e; EXLIST.push(e);
 });
-const GRIP_ROT = ['dead-hang','farmers','towel-hang','plate-pinch','wrist-roller','reverse-curl'];
+const GRIP_ROT = ['dead-hang','farmers','reverse-curl']; /* Haltekraft an der Stange (≈ Handle-Dicke), unter Last, plus Ausgleich der Strecker */
 const GRIP_HANG = ['dead-hang','towel-hang','einarm-hang'];
 /* Griff je Saisonphase: Maximalkraft schwer und kurz, Power-Phase Kraftausdauer */
-const GRIP_BY_PHASE = {max:['dead-hang','towel-hang','farmers'], power:['repeaters','handle-hold']};
+const GRIP_BY_PHASE = {max:['dead-hang','farmers'], power:['repeaters','handle-hold']};
 const MAIN_LIFTS = EXLIST.filter(e => e.main).map(e => e.id);   // Kniebeuge, Bankdrücken, Kreuzheben, Schulterdrücken, Rudern
 const BW_RATIO = {kniebeuge:0.75, bankdruecken:0.55, kreuzheben:1.0, ohp:0.35, 'lh-rudern':0.5};
 
@@ -357,7 +357,7 @@ function fmtPace(secPerKm) { if (!isFinite(secPerKm) || secPerKm <= 0) return '�
 function defaultProfile() {
   return {v:2, done:false, split:'fullbody', days:[0,2,4], time:'18:00', minutes:60, model:'linear', bw:null,
     e1:{}, src:{}, adj:{}, swaps:{}, block:{n:0, no:1, e1Start:{}, started:todayStr()}, upd:0,
-    wake:false, season:'2027-05-01', gripEvery:14, gripSet:['hang','towel','rep'], gripGoal:{}, height:null, tomb:[],
+    wake:false, season:'2027-05-01', gripEvery:14, gripSet:['hang','hhold'], gripGoal:{}, height:null, tomb:[],
     remind:{on:false, lead:30}, prep:{on:false, weeks:3, n:0}, bwGoal:null, bwDate:null, custom:[], exNotes:{}};
 }
 function minKg(e) { return e.eq === 'LH' ? 20 : e.inc; }
