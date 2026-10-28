@@ -17,6 +17,9 @@ function targetLong(it) {
   if (pl.mode === 'bw') return '<b>' + pl.sets + ' × ' + pl.rng[0] + '–' + pl.rng[1] + ' ' + (pl.unit || 'Wdh.') + '</b>' + (pl.kg > 0 ? ' · +' + fkg(pl.kg) : '') + (pl.unit === 'Zyklen' ? ' · je Zyklus 7 s hängen, 3 s Pause' : '');
   return '<b>' + pl.sets + ' × ' + pl.reps + ' s</b> halten' + (pl.kg > 0 ? ' · ' + (EX[it.exId].eq === 'KG' ? '+' : '') + fkg(pl.kg) : '') + (pl.rest ? ' · ' + fmtDur(pl.rest * 1000) + ' Pause' : '');
 }
+/* Nächste Übung mit offenen Sätzen (nach i, dann von vorn); fertige werden übersprungen */
+function nextOpen(a, i) { const n = a.items.length; for (let k = 1; k <= n; k++) { const j = (i + k) % n; if (j !== i && a.items[j].sets.some(s => !s.done)) return j; } return 'list'; }
+function prevIdx(a, i) { return i > 0 ? i - 1 : null; }
 function firstOpenSet(it) { const k = it.sets.findIndex(s => !s.done); return k >= 0 ? k : it.sets.length - 1; }
 
 function woRow(it, i) {
@@ -47,7 +50,7 @@ function vFocus(i) {
   const pa = ssPartner(a, i);
   /* Fotos und Anleitung nur auf Antippen der Figur, damit alles Wichtige ohne Scrollen auf den Bildschirm passt */
   const pics = S.ui.fpics ? exPics(it.exId) + exHowTo(it.exId) : '';
-  let h = '<div class="fhead"><button class="figbtn" data-act="fpics" aria-expanded="' + !!S.ui.fpics + '" aria-label="Ausführung ' + (S.ui.fpics ? 'ausblenden' : 'zeigen') + '">' + avatar(e) + '<span class="figi">' + (S.ui.fpics ? '×' : 'i') + '</span></button><div class="exm"><b>' + esc(e.name) + '</b><small>Übung ' + (i + 1) + ' von ' + a.items.length + ' · ' + esc(e.m) + '</small></div></div>' + pics + (pa !== null ? '<p class="tag" style="display:inline-block;margin:0 0 6px">Supersatz mit ' + esc(EX[a.items[pa].exId].name) + '</p>' : '') +
+  let h = '<div class="fhead"><button class="figbtn" data-act="fpics" aria-expanded="' + !!S.ui.fpics + '" aria-label="Ausführung ' + (S.ui.fpics ? 'ausblenden' : 'zeigen') + '">' + avatar(e) + '<span class="figi">' + (S.ui.fpics ? '×' : 'i') + '</span></button><div class="exm"><b>' + esc(e.name) + '</b><small>Übung ' + (i + 1) + ' von ' + a.items.length + ' · ' + esc(e.m) + '</small></div><span class="fnavi"><button class="ic s" data-act="wf-go" data-v="' + (i - 1) + '"' + (i ? '' : ' disabled') + ' aria-label="Vorherige Übung">‹</button><button class="ic s" data-act="wf-go" data-v="' + nextOpen(a, i) + '" aria-label="Nächste offene Übung">›</button></span></div>' + pics + (pa !== null ? '<p class="tag" style="display:inline-block;margin:0 0 6px">Supersatz mit ' + esc(EX[a.items[pa].exId].name) + '</p>' : '') +
     '<p class="ftgt">' + targetLong(it) + '</p>' + (s.top ? '<p class="tag" style="display:inline-block;margin:0 0 6px">Topsatz: 3 saubere Wdh., ca. 1 Wdh. Reserve. Allein nur mit Ablage oder Safety-Pins.</p>' : '') + (it.lastTxt ? '<p class="last">Letztes Mal: ' + esc(it.lastTxt) + '</p>' : '') + (S.p.exNotes[it.exId] ? '<p class="last">Notiz: ' + esc(S.p.exNotes[it.exId]) + '</p>' : '');
   /* Sätze als Leiste, aktueller Satz hervorgehoben */
   let n = 0;
@@ -60,11 +63,15 @@ function vFocus(i) {
     h += r ? '<div class="rpt"><p class="readout" data-rpp>Greifen</p><div class="big" data-rpt>3</div><p class="sub" data-rpn>0 volle Hänge</p><button class="btn wide" style="min-height:64px;font-size:20px;margin-top:10px" data-act="rp-stop">Losgelassen</button><p class="hint" style="margin-top:6px">Stoppt automatisch nach ' + r.max + ' Hängen. Gezählt werden nur volle 7-s-Hänge.</p></div>'
       : (s.done ? '' : '<button class="btn wide" style="min-height:56px;margin-top:6px" data-act="rp-go" data-v="' + i + '">▶ 7/3-Timer: Serie starten</button><p class="hint" style="text-align:center;margin:6px 0 10px">Ziel 4–6 volle Hänge. Schaffst du in allen Serien 6, kommt beim nächsten Mal Zusatzgewicht dazu.</p>');
   }
-  if (!(S.rpT && S.rpT.i === i)) h += '<button class="bigchk' + (s.done ? ' done' : '') + '" data-act="set-done" data-i="' + i + '" data-s="' + si + '" aria-label="' + (s.done ? 'Satz zurücksetzen' : 'Satz erledigt') + '">' + I(ICONS.check) + '</button>' +
-    '<p class="hint" style="text-align:center;margin:6px 0 0">' + (s.done ? 'Erledigt. Antippen setzt den Satz zurück.' : 'Satz erledigt? Haken antippen. Pause ' + fmtDur(restFor(it) * 1000) + '.') + '</p>';
-  if (pg.done === pg.all && pg.all) h += '<div class="card" style="margin-top:14px"><h3>Übung fertig</h3><p class="sub" style="margin-top:4px">Wie viele Wiederholungen wären im letzten Satz noch gegangen? Steuert die Gewichte der nächsten Wochen.</p><div class="chips">' + RIR_FEEL.map(f => '<button class="chip" data-act="feel" data-i="' + i + '" data-v="' + f[0] + '" aria-pressed="' + (it.feel === f[0]) + '">' + f[1] + '</button>').join('') + '</div></div>';
-  else h += '<div class="chips" style="margin-top:14px;justify-content:center">' + RIR_FEEL.map(f => '<button class="chip sm" data-act="feel" data-i="' + i + '" data-v="' + f[0] + '" aria-pressed="' + (it.feel === f[0]) + '">' + f[1] + '</button>').join('') + '</div>';
-  h += '<div class="fnav"><button class="btn ghost" data-act="wf-go" data-v="' + (i - 1) + '"' + (i ? '' : ' disabled') + '>‹ Vorherige</button><button class="btn' + (pg.done === pg.all ? '' : ' ghost') + '" data-act="wf-go" data-v="' + (i + 1 < a.items.length ? i + 1 : 'list') + '">' + (i + 1 < a.items.length ? 'Nächste ›' : 'Zur Übersicht') + '</button></div>';
+  const finished = pg.all && pg.done === pg.all && S.ui.ws == null;
+  if (finished) { /* Übung fertig: ein Tipp auf die Reserve speichert und springt zur nächsten offenen Übung */
+    const nx = nextOpen(a, i);
+    h += '<div class="card finc"><h3>Übung fertig</h3><p class="sub" style="margin-top:2px">Wie viele Wiederholungen wären im letzten Satz noch gegangen?</p><div class="finb">' + RIR_FEEL.map(f => '<button class="btn' + (it.feel === f[0] ? '' : ' ghost') + '" data-act="feel" data-i="' + i + '" data-v="' + f[0] + '">' + f[1] + '</button>').join('') + '</div>' +
+      '<p class="hint" style="margin-top:6px">' + (nx === 'list' ? 'Danach: Übersicht, alle Übungen erledigt.' : 'Danach weiter mit ' + esc(EX[a.items[nx].exId].name) + '.') + '</p></div>';
+  } else if (!(S.rpT && S.rpT.i === i)) h += '<button class="bigchk' + (s.done ? ' done' : '') + '" data-act="set-done" data-i="' + i + '" data-s="' + si + '" aria-label="' + (s.done ? 'Satz zurücksetzen' : 'Satz erledigt') + '">' + I(ICONS.check) + '</button>' +
+    '<p class="hint" style="text-align:center;margin:4px 0 0">' + (s.done ? 'Erledigt. Antippen setzt den Satz zurück.' : 'Haken antippen, wenn der Satz erledigt ist. Pause ' + fmtDur(restFor(it) * 1000) + '.') + '</p>';
+  const nx2 = nextOpen(a, i);
+  h += '<div class="fnav"><button class="btn ghost" data-act="wf-go" data-v="' + (i - 1) + '"' + (i ? '' : ' disabled') + '>‹ Vorherige</button><button class="btn' + (pg.done === pg.all ? '' : ' ghost') + '" data-act="wf-go" data-v="' + nx2 + '">' + (nx2 === 'list' ? 'Zur Übersicht' : 'Nächste offene ›') + '</button></div>';
   /* Werkzeuge */
   const tools = [];
   if ((mode === 'pct' || (mode === 'dp' && pl.kg)) && ['LH','KH','MA','KB'].includes(e.eq) && !it.sets.some(q => q.warm)) tools.push('<button class="link" data-act="warm" data-i="' + i + '">Aufwärmsätze</button>');

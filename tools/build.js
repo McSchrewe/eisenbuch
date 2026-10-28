@@ -24,7 +24,7 @@ fs.mkdirSync(path.join(root, 'www'), {recursive: true});
 const fontCss = ''; /* Systemschrift (Roboto auf Android) */
 const reset = ':root{color-scheme:light}html,body{margin:0}body{font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}';
 fs.writeFileSync(path.join(root, 'www/index.html'),
-  '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">' +
+  '<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">' +
   '<meta name="theme-color" content="#111514"><title>Eisenbuch</title><style>' + reset + '\n' + fontCss + css + '</style></head><body>' + markup + guard + '<script src="capacitor.js"></script>' + script + '</body></html>');
 fs.copyFileSync(path.join(root, 'node_modules/@capacitor/core/dist/capacitor.js'), path.join(root, 'www/capacitor.js'));
 fs.mkdirSync(path.join(root, 'www/img/ex'), {recursive: true});

@@ -79,6 +79,7 @@ function hideTrophy() { const el = $('#trophy'); if (el) { el.hidden = true; el.
 function liveRecordCheck(it, j) {
   const e = EX[it.exId], s = it.sets[j]; if (!e || s.warm) return [];
   if (!recordsOf(S.sessions, it.exId)) return []; /* erstes Training dieser Übung: noch keine Rekorde */
+  const cur1 = e1Of(S.p, it.exId); if (cur1 && s.kg > 0 && s.reps > 0 && EPLEY(s.kg, s.reps) > cur1 * 1.3) return []; /* wahrscheinlich Tippfehler: erst nach Bestätigung am Ende */
   const cur = {date:todayStr(), exercises:[{exId:it.exId, sets:it.sets.filter((q, k) => k !== j && q.done && !q.warm)}]};
   return newRecords(e, recordsOf(S.sessions.concat([cur]), it.exId), s);
 }

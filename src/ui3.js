@@ -148,11 +148,19 @@ function sheetHTML() {
     if (sh.prepDone) h += '<div class="banner" style="margin-top:12px"><span><b>Einstiegsphase geschafft</b><small>Ab der nächsten Einheit läuft Block ' + p.block.no + ', Woche 1.</small></span></div>';
     else if (s.prep) h += '<p class="hint" style="margin-top:8px">Vorbereitung: zählt nicht zum Block.</p>';
     if (s.ready && s.ready.sc <= -2) h += '<p class="hint" style="margin-top:4px">Leichter Tag nach Tagesform-Check (−1 Satz, −5 %).</p>';
-    if (sh.prs.length) h += '<h3 style="margin-top:14px">' + trophyMini() + ' Neue Rekorde</h3>' + sh.prs.map(x => '<div class="exrow"><span>' + esc(EX[x.id].name) + '<br><small>' + REC_T[x.k] + '</small></span><span class="r">' + esc(recFmt(x.k, x)) + '<br><small>vorher ' + esc(recUnit(x.k, x.prev)) + '</small></span></div>').join('');
+    const oddIds = sh.ch.filter(c => c.odd).map(c => c.id), prs = sh.prs.filter(x => !oddIds.includes(x.id));
+    if (prs.length) h += '<h3 style="margin-top:14px">' + trophyMini() + ' Neue Rekorde</h3>' + prs.map(x => '<div class="exrow"><span>' + esc(EX[x.id].name) + '<br><small>' + REC_T[x.k] + '</small></span><span class="r">' + esc(recFmt(x.k, x)) + '<br><small>vorher ' + esc(recUnit(x.k, x.prev)) + '</small></span></div>').join('');
     const real = sh.ch.filter(c => !c.odd), odd = sh.ch.filter(c => c.odd);
     if (real.length) h += '<h3 style="margin-top:14px">1RM angepasst</h3><p class="hint">Die Gewichte der folgenden Wochen sind neu berechnet.</p>' + real.map(c => '<div class="exrow"><span>' + esc(EX[c.id].name) + (c.down ? ' <small>(2× unter Plan)</small>' : '') + '</span><span class="r">' + (c.from ? fkg(c.from) + ' → ' : '') + fkg(c.to) + '</span></div>').join('');
-    if (odd.length) h += '<h3 style="margin-top:14px">Nicht übernommen</h3>' + odd.map(c => '<p class="hint">' + esc(EX[c.id].name) + ': Die Einheit ergibt ein 1RM von ca. ' + fkg(c.est) + ', mehr als 30 % über ' + fkg(c.from) + '. Tippfehler? Falls echt, unter Mehr → Periodisierung von Hand setzen.</p>').join('');
-    if (!sh.prs.length && !real.length && !odd.length) h += '<p style="margin-top:12px">Sauber durchgezogen. Die nächsten Gewichte sind schon berechnet.</p>';
+    odd.forEach(c => {
+      const x = s.exercises.find(q => q.exId === c.id), e = EX[c.id]; if (!x) return;
+      let k = 0, best = -1; x.sets.forEach((q, j) => { if (q.warm) return; const v = EPLEY(q.kg || 0, q.reps || 0); if (v > best) { best = v; k = j; } });
+      const q = x.sets[k];
+      h += '<div class="card oddc"><b>⚠ Wert relativ hoch. Passt das?</b><p style="margin-top:4px">' + esc(e.name) + ': ' + esc(fmtSet(e, q)) + ' ergibt ein 1RM von ca. ' + fkg(c.est) + ' (bisher ' + fkg(c.from) + ').</p>' +
+        (sh.fix === c.id ? '<div class="pair" style="margin-top:8px"><div><label class="lab" for="ox-kg">Gewicht (kg)</label><input type="text" inputmode="decimal" id="ox-kg" value="' + fmt(q.kg || 0) + '"></div><div><label class="lab" for="ox-r">Wiederholungen</label><input type="text" inputmode="numeric" id="ox-r" value="' + (q.reps || '') + '"></div></div><button class="btn wide" style="margin-top:8px" data-act="odd-save" data-v="' + c.id + ':' + k + '">Korrektur speichern</button>'
+          : '<div class="row" style="margin-top:8px;gap:8px"><button class="btn sm" data-act="odd-ok" data-v="' + c.id + '">Ja, stimmt: 1RM übernehmen</button><button class="btn sm ghost" data-act="odd-fix" data-v="' + c.id + '">Tippfehler korrigieren</button></div>') + '</div>';
+    });
+    if (!prs.length && !real.length && !odd.length) h += '<p style="margin-top:12px">Sauber durchgezogen. Die nächsten Gewichte sind schon berechnet.</p>';
     return h + '<button class="btn wide" style="margin-top:14px" data-act="close">Fertig</button>';
   }
   if (sh.t === 'block') {
@@ -332,19 +340,36 @@ const ACT = {
       if (it.ss) S.rest = null;
       if (open >= 0 && S.ui.wf != null) { setTimeout(() => { S.ui.wf = pa; S.ui.ws = open; renderWorkout(); const sc = $('#woscroll'); if (sc) sc.scrollTop = 0; }, 350); if (it.ss) toast('Supersatz: weiter mit ' + EX[other.exId].name); }
     }
-    if (S.ui.wf != null) { const nx = it.sets.findIndex((q, k) => k > j && !q.done); S.ui.ws = nx >= 0 ? nx : j; if (nx < 0 && woProg(it).done === woProg(it).all && !nr.length) toast(EX[it.exId].name + ' geschafft. Wie lief es?'); }
+    if (S.ui.wf != null) { const nx = it.sets.findIndex((q, k) => k > j && !q.done); const any = it.sets.findIndex(q => !q.done); S.ui.ws = nx >= 0 ? nx : any >= 0 ? any : null; }
     Nat.restSchedule();
     saveActive(); renderWorkout(); renderRest();
   },
-  'set-add'(v, t) { const it = S.active.items[+t.dataset.i], l = it.sets.filter(s => !s.warm).pop() || it.sets[it.sets.length - 1]; it.sets.push({kg:l ? l.kg : null, reps:l ? l.reps : it.plan.reps, done:false}); saveActive(); renderWorkout(); },
-  'set-rm'(v, t) { const it = S.active.items[+t.dataset.i]; it.sets.pop(); saveActive(); renderWorkout(); },
-  feel(v, t) { S.active.items[+t.dataset.i].feel = v; saveActive(); renderWorkout(); },
+  'set-add'(v, t) { const it = S.active.items[+t.dataset.i], l = it.sets.filter(s => !s.warm).pop() || it.sets[it.sets.length - 1]; it.sets.push({kg:l ? l.kg : null, reps:l ? l.reps : it.plan.reps, done:false}); S.ui.ws = it.sets.length - 1; saveActive(); renderWorkout(); }, /* direkt in den neuen Satz */
+  'set-rm'(v, t) { const it = S.active.items[+t.dataset.i]; it.sets.pop(); S.ui.ws = null; saveActive(); renderWorkout(); },
+  feel(v, t) {
+    const i = +t.dataset.i, it = S.active.items[i]; it.feel = v; saveActive();
+    /* Übung komplett: nach der Reserve-Angabe automatisch zur nächsten offenen Übung */
+    if (S.ui.wf === i && it.sets.every(s => s.done)) { const nx = nextOpen(S.active, i); S.ui.ws = null; S.ui.fpics = false; if (nx === 'list') { S.ui.wf = null; toast('Alle Übungen erledigt. Training beenden, wenn du fertig bist.'); } else { S.ui.wf = nx; toast('Weiter: ' + EX[S.active.items[nx].exId].name); } renderWorkout(); const sc = $('#woscroll'); if (sc) sc.scrollTop = 0; return; }
+    renderWorkout();
+  },
   warm(v, t) { const it = S.active.items[+t.dataset.i], w = it.sets.find(s => !s.warm), kg = (w && w.kg) || it.plan.kg; if (!kg) { toast('Trag erst das Arbeitsgewicht ein.'); return; } it.sets = warmups(kg, EX[it.exId]).concat(it.sets); saveActive(); renderWorkout(); },
   plates(v, t) { S.ui.sheet = {t:'plates', i:+t.dataset.i}; renderSheet(); },
   'w-swap'(v, t) { openPicker({mode:'wswap', i:+t.dataset.i, m:EX[S.active.items[+t.dataset.i].exId].m}); },
   'w-rm'(v, t) { const i = +t.dataset.i; if (S.ui.rmI === i) S.ui.wf = null; if (S.ui.rmI !== i) { S.ui.rmI = i; renderWorkout(); setTimeout(() => { if (S.ui.rmI === i) { S.ui.rmI = null; renderWorkout(); } }, 4000); return; } S.ui.rmI = null; S.active.items.splice(i, 1); saveActive(); renderWorkout(); },
   'w-add'() { openPicker({mode:'wadd'}); },
   'tro-x'() { hideTrophy(); },
+  /* Hoher Wert nach dem Training: bestätigen oder korrigieren */
+  'odd-ok'(id) { const sh = S.ui.sheet, c = sh.ch.find(x => x.id === id && x.odd); if (!c) return; S.p.e1[id] = c.est; S.p.adj[id] = 0; c.odd = false; c.to = c.est; saveProfile(); renderSheet(); toast(EX[id].name + ': 1RM ' + fkg(c.est) + ' übernommen.'); },
+  'odd-fix'(id) { S.ui.sheet.fix = id; renderSheet(); },
+  'odd-save'(v) {
+    const [id, k] = v.split(':'), sh = S.ui.sheet, sess = sh.sess, x = sess.exercises.find(q => q.exId === id), kg = parseNum($('#ox-kg').value), r = Math.round(parseNum($('#ox-r').value) || 0);
+    if (!(kg >= 0) || !(r > 0)) { toast('Gewicht und Wiederholungen eintragen.'); return; }
+    x.sets[+k].kg = kg; x.sets[+k].reps = r; saveSession(sess);
+    S.p.adj[id] = (sess.before && sess.before.adj && sess.before.adj[id]) || 0; /* Anpassung neu rechnen */
+    const ch = applyProgress(S.p, {prep:sess.prep, exercises:[x]});
+    sh.ch = sh.ch.filter(c => c.id !== id).concat(ch); sh.fix = null; sh.prs = sessRecords(S.sessions.filter(q => q !== sess), sess);
+    saveProfile(); renderSheet(); toast('Satz korrigiert.');
+  },
   /* 7/3-Timer für Repeaters: 3 s Countdown, dann 7 s hängen / 3 s Pause. Gezählt werden volle Hänge, Stopp bei 6 oder beim Loslassen */
   'rp-go'(v) {
     rpStop(false); const i = +v, it = S.active.items[i], si = it.sets.findIndex(q => !q.done); if (si < 0) { toast('Alle Serien erledigt.'); return; }

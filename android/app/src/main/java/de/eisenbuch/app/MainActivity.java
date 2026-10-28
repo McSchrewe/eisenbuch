@@ -3,6 +3,7 @@ package de.eisenbuch.app;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.WindowManager;
+import android.webkit.WebSettings;
 import androidx.core.view.WindowCompat;
 import com.getcapacitor.BridgeActivity;
 
@@ -12,6 +13,13 @@ public class MainActivity extends BridgeActivity {
         setTheme(R.style.AppTheme_NoActionBar);
         super.onCreate(savedInstanceState);
         applyBars();
+        // Kein Zoomen wie in normalen Apps
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            WebSettings ws = getBridge().getWebView().getSettings();
+            ws.setSupportZoom(false);
+            ws.setBuiltInZoomControls(false);
+            ws.setDisplayZoomControls(false);
+        }
     }
 
     @Override
