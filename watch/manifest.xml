@@ -4,7 +4,6 @@
     <iq:application id="cf31de923ead4b8e8242191afea39114" type="watch-app" name="@Strings.AppName" entry="EisenbuchApp" launcherIcon="@Drawables.LauncherIcon" minApiLevel="4.0.0">
         <iq:products>
             <iq:product id="venu3"/>
-            <iq:product id="venu3s"/>
         </iq:products>
         <iq:permissions>
             <iq:uses-permission id="Communications"/>

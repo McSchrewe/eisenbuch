@@ -21,7 +21,7 @@ class EisenbuchApp extends Application.AppBase {
         model.stop();
     }
 
-    function onPhone(msg) {
+    function onPhone(msg as Communications.PhoneAppMessage) as Void {
         model.onPhone(msg.data);
     }
 

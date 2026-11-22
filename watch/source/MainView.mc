@@ -79,7 +79,7 @@ class MainView extends WatchUi.View {
         dc.setPenWidth(1);
         center(dc, w / 2, h * 0.19, Graphics.FONT_XTINY, GREY, "PAUSE");
         var mm = left / 60, ss = left % 60;
-        center(dc, w / 2, h * 0.38, Graphics.FONT_NUMBER_THAI_HOT, Graphics.COLOR_WHITE, mm.toString() + ":" + ss.format("%02d"));
+        center(dc, w / 2, h * 0.40, Graphics.FONT_NUMBER_THAI_HOT, Graphics.COLOR_WHITE, mm.toString() + ":" + ss.format("%02d"));
         var e = m.head();
         if (e != null) {
             center(dc, w / 2, h * 0.60, Graphics.FONT_XTINY, GREY, "Als Nächstes");
