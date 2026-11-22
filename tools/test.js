@@ -147,3 +147,13 @@ console.log('OK: Plan-Reihenfolge nach tatsächlichen Einheiten');
   assert(wq.items.length <= 8, 'Essentials: kurz');
 }
 console.log('OK: Nippard (Formel, Wellen, Topsatz + Back-off)');
+
+/* Prehab: 2 Übungen vorneweg, im Wechsel, Hauptübung bleibt Slot 0 für die Periodisierung */
+{
+  const p = T.defaultProfile(); Object.assign(p, {model:'nul', split:'upperlower', days:[0, 1, 3, 4], done:true, prehab:true}); p.e1 = {kniebeuge:100, bankdruecken:90, kreuzheben:125, ohp:60, 'lh-rudern':80}; T.ensurePrograms(p);
+  const pl = T.activeProgram(p).plans[0], a = T.buildWorkout(p, [], 0, pl.id), b = T.buildWorkout(p, [], 1, pl.id);
+  assert(a.items[0].prehab && a.items[1].prehab && !a.items[2].prehab, 'Prehab vorneweg');
+  assert.notStrictEqual(a.items[0].exId, b.items[0].exId, 'Prehab im Wechsel');
+  assert(/schwere Welle|Wdh.-Welle|Satz-Welle/.test(a.items[2].desc), 'erste Hauptübung behält die Welle');
+}
+console.log('OK: Prehab');

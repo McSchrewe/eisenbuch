@@ -447,3 +447,10 @@ html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:10
 .maplist div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);padding:4px 0}
 .maplist span{color:var(--mute)}
 .maplist b{font-weight:500;text-align:right}
+/* Zug-Druck-Bilanz */
+.balrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}
+.balrow:last-child{border-bottom:0}
+.balrow>span:first-child{display:flex;flex-direction:column;min-width:0}
+.balv{display:flex;flex-direction:column;align-items:flex-end;text-align:right;flex:none}
+.balv b{font:600 20px/1.1 var(--fd)}
+.balv.ok b{color:var(--ok)} .balv.mid b{color:var(--warn)} .balv.low b{color:var(--heavy)}

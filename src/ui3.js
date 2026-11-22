@@ -3,7 +3,7 @@
 function uid(pre) { return pre + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function itemFromPlan(pl) {
   const sets = []; for (let i = 0; i < pl.sets; i++) { const sp = pl.spec && pl.spec[i]; sets.push(sp ? {kg:sp.kg, reps:sp.reps, top:!!sp.top, done:false} : {kg:pl.kg == null ? null : pl.kg, reps:pl.reps, done:false}); }
-  return {exId:pl.exId, ss:!!pl.ss, plan:{mode:pl.mode, sets:pl.sets, reps:pl.reps, pct:pl.pct, kg:pl.kg, rng:pl.rng, desc:pl.desc, e1:pl.e1, first:pl.first, slot:pl.slot, top:!!pl.spec, rest:pl.rest || null, unit:pl.unit || null, wkg:!!pl.wkg}, lastTxt:pl.lastTxt, feel:'ok', sets};
+  return {exId:pl.exId, ss:!!pl.ss, plan:{mode:pl.mode, sets:pl.sets, reps:pl.reps, pct:pl.pct, kg:pl.kg, rng:pl.rng, desc:pl.desc, e1:pl.e1, first:pl.first, slot:pl.slot, top:!!pl.spec, rest:pl.rest || null, unit:pl.unit || null, wkg:!!pl.wkg, prehab:!!pl.prehab}, lastTxt:pl.lastTxt, feel:'ok', sets};
 }
 let wakeLock = null;
 function wake() { try { if (navigator.wakeLock && !wakeLock) navigator.wakeLock.request('screen').then(l => { wakeLock = l; l.addEventListener('release', () => { wakeLock = null; }); }).catch(() => {}); } catch (e) {} }
@@ -11,7 +11,7 @@ function unwake() { try { if (wakeLock) wakeLock.release(); } catch (e) {} wakeL
 
 /* Tagesform: Schlaf, Muskelkater, Energie je +1 / 0 / −1. Summe ≤ −2 = leichter Tag (−1 Satz je Übung, −5 % Last) */
 const READY_Q = [['sleep', 'Schlaf', ['Gut (7+ h)', 'Okay', 'Schlecht (< 6 h)']], ['sore', 'Muskelkater', ['Keiner', 'Leicht', 'Stark']], ['energy', 'Energie', ['Fit', 'Normal', 'Platt']]];
-function readyScore(a) { return READY_Q.reduce((s, q) => s + (a[q[0]] === undefined ? 0 : 1 - a[q[0]]), 0) + (a.hr || 0); }
+function readyScore(a) { return READY_Q.reduce((s, q) => s + (a[q[0]] === undefined ? 0 : 1 - a[q[0]]), 0) + (a.hr || 0) + (a.bbs || 0); }
 /* Health Connect (Garmin): letzte Nacht gegen den Median der Nächte davor */
 function hcSummary() {
   const h = S.hc; if (!S.p || !S.p.hc || !h || !h.nights || !h.nights.length) return null;
@@ -25,16 +25,22 @@ function hcSummary() {
 }
 function fmtH(h) { const m = Math.round(h * 60); return Math.floor(m / 60) + ':' + pad2(m % 60) + ' h'; }
 function hcPrefill(a) {
+  const bs = typeof bioSummary === 'function' ? bioSummary() : null; a.bbs = bs && bs.low ? -1 : 0; /* Body Battery tief: zählt als −1 */
   const hs = hcSummary(); if (!hs || hs.old) return;
   if (a.sleep === undefined) a.sleep = hs.sleepH >= 7 ? 0 : hs.sleepH >= 6 ? 1 : 2;
   a.hr = hs.dHr !== null && hs.dHr >= 5 ? -1 : 0; /* Nachtpuls deutlich erhöht: zählt wie eine schlechte Antwort */
 }
+function bioLine() {
+  const b = typeof bioSummary === 'function' ? bioSummary() : null; if (!b) return '';
+  return '<div class="card flat" style="margin-top:10px"><p><b>⌚ Body Battery</b></p><p class="sub">Heute geladen auf ' + b.bbx + ' von 100 · jetzt ' + b.bb + (b.base !== null ? ' · Ø ' + b.base : '') + (b.st !== null ? ' · Stress Ø ' + b.st : '') + '</p>' +
+    (b.low ? '<p class="tag deload" style="display:inline-block;margin-top:6px">Body Battery niedrig: zählt als −1</p>' : '') + '</div>';
+}
 function hcLine() {
-  const hs = hcSummary(); if (!hs) return '';
-  if (hs.old) return '<p class="hint" style="margin-top:8px">⌚ Keine Schlafdaten von letzter Nacht in Health Connect. Uhr in Garmin Connect synchronisieren.</p>';
+  const hs = hcSummary(); if (!hs) return bioLine();
+  if (hs.old) return '<p class="hint" style="margin-top:8px">⌚ Keine Schlafdaten von letzter Nacht in Health Connect. Uhr in Garmin Connect synchronisieren.</p>' + bioLine();
   return '<div class="card flat" style="margin-top:10px"><p><b>⌚ Uhr (Health Connect)</b></p><p class="sub">' + fmtH(hs.sleepH) + ' Schlaf' + (hs.sleepBase ? ' (Ø ' + fmtH(hs.sleepBase) + ')' : '') +
     (hs.hr ? ' · Nachtpuls ' + hs.hr + ' bpm' + (hs.hrBase ? ' (Ø ' + hs.hrBase + ' bpm, ' + (hs.dHr >= 0 ? '+' : '−') + Math.abs(hs.dHr) + ')' : '') : '') + '</p>' +
-    (hs.dHr !== null && hs.dHr >= 5 ? '<p class="tag deload" style="display:inline-block;margin-top:6px">Nachtpuls ' + hs.dHr + ' bpm über deinem Schnitt: zählt als −1</p>' : '') + '</div>';
+    (hs.dHr !== null && hs.dHr >= 5 ? '<p class="tag deload" style="display:inline-block;margin-top:6px">Nachtpuls ' + hs.dHr + ' bpm über deinem Schnitt: zählt als −1</p>' : '') + '</div>' + bioLine();
 }
 function readyHTML(sh) {
   const a = sh.a, sc = readyScore(a), all = READY_Q.every(q => a[q[0]] !== undefined);
@@ -210,6 +216,8 @@ function sheetHTML() {
   if (sh.t === 'inv') return invSheet() + close;
   if (sh.t === 'ready') return readyHTML(sh) + close;
   if (sh.t === 'trsug') return '<h2>Sitzt der Trick?</h2><p>An mindestens 3 Tagen gelandet:</p>' + sh.sug.map(x => '<div class="exrow"><span>' + esc(TR[x.id].name) + ' · ' + STANCE[x.k] + '</span><button class="btn sm" data-act="tr-set" data-v="' + x.id + ':3:' + x.k + '">Auf „Sitzt“</button></div>').join('') + close;
+  if (sh.t === 'swapq') return '<h2>Nur heute tauschen?</h2><p class="sub">' + esc(EX[sh.old].name) + ' → ' + esc(EX[sh.nu].name) + '</p>' +
+    '<button class="btn wide" style="margin-top:12px" data-act="swq-today">Nur heute</button><button class="btn ghost wide" style="margin-top:8px" data-act="swq-plan">Auch im Plan dauerhaft ersetzen</button>';
   if (sh.t === 'trpick') { const k = (S.ui.wf2 && S.ui.wf2.st) || 's'; return '<h2>Trick hinzufügen (' + STANCE[k] + ')</h2><div class="list">' + TRICKS.filter(t => !(S.ui.wf2.sel[t.id] && S.ui.wf2.sel[t.id][k] !== undefined)).map(t => '<button class="exitem" data-act="ws-add" data-v="' + t.id + '"><span class="av" style="--c:' + T_AREAS[t.a][1] + '">' + t.lvl + '</span><span class="exm"><b>' + esc(t.name) + '</b><small>' + T_AREAS[t.a][0] + ' · ' + T_STAT[tSt(t.id, k)][0] + '</small></span></button>').join('') + '</div>' + close; }
   if (sh.t === 'wk') { const w = S.wake.find(x => x.id === sh.id); if (!w) return close; return '<p class="eyebrow">' + esc(dlong(w.date)) + '</p><h2>' + esc(w.spot) + (w.min ? ' · ' + w.min + ' min' : '') + '</h2>' + (w.laps ? '<p class="sub">' + w.laps + ' Runden</p>' : '') + (w.note ? '<p>' + esc(w.note) + '</p>' : '') + (w.tricks || []).map(x => '<div class="exrow"><span>' + esc((TR[x.id] || {name:x.id}).name) + ((x.k || 's') === 'w' ? ' · Switch' : '') + '</span><span class="r">' + entL(x) + '/' + entA(x) + ' gelandet</span></div>').join('') + (sh.del ? '<button class="btn danger wide" style="margin-top:12px" data-act="wk-del2" data-v="' + w.id + '">Endgültig löschen</button>' : '<button class="btn ghost wide" style="margin-top:12px" data-act="wk-del1">Session löschen</button>') + close; }
   if (sh.t === 'phcmp') return photoCmpHTML(sh.ids);
@@ -309,7 +317,7 @@ const ACT = {
   },
   tab(v) { if (S.tab === v) { S.ui.pv = null; S.ui.more = null; } S.tab = v; S.ui.wipe = false; S.ui.pedit = false; tryLS(() => localStorage.setItem(LS + '.tab', v)); render(); window.scrollTo(0, 0); },
   'wo-start'() { startWorkout(false); },
-  'pl-start'(v) { if (S.active) { S.ui.woMin = false; render(); return; } if (S.p.readyCheck === false) { startWorkout(false, v || undefined); return; } S.ui.sheet = {t:'ready', planId:v || undefined, a:{}}; hcPrefill(S.ui.sheet.a); renderSheet(); Nat.healthRefresh().then(h => { if (h && S.ui.sheet && S.ui.sheet.t === 'ready') { hcPrefill(S.ui.sheet.a); renderSheet(); } }); },
+  'pl-start'(v) { if (S.active) { S.ui.woMin = false; render(); return; } if (S.p.readyCheck === false) { startWorkout(false, v || undefined); return; } S.ui.sheet = {t:'ready', planId:v || undefined, a:{}}; hcPrefill(S.ui.sheet.a); renderSheet(); Nat.garminBio(); Nat.healthRefresh().then(h => { if (h && S.ui.sheet && S.ui.sheet.t === 'ready') { hcPrefill(S.ui.sheet.a); renderSheet(); } }); },
   'rd-pick'(v) { const [k, i] = v.split(':'); S.ui.sheet.a[k] = +i; renderSheet(); },
   'rd-go'() { const sh = S.ui.sheet; S.ui.sheet = null; renderSheet(); startWorkout(false, sh.planId, sh.a); if (readyScore(sh.a) <= -2) toast('Leichter Tag: 1 Satz weniger, 5 % weniger Last.'); },
   'rd-skip'() { const sh = S.ui.sheet; S.ui.sheet = null; renderSheet(); startWorkout(false, sh.planId); },
@@ -334,6 +342,9 @@ const ACT = {
   'sea-tog'() { S.p.seasonPause = S.p.seasonPause === false; saveProfile(); render(); reschedSoon(); },
   'vol-tog'() { S.p.volAuto = S.p.volAuto === false; saveProfile(); render(); },
   'sw-m'(v) { S.ui.swm = v; render(); },
+  'hr-rest'(v) { S.p.hrRest = +v; saveProfile(); render(); Nat.garminSoon(); },
+  'ph-tog'() { S.p.prehab = !S.p.prehab; saveProfile(); render(); toast(S.p.prehab ? 'Prehab an: 2 kurze Übungen für Knie, Sprunggelenk und Schulter vorneweg.' : 'Prehab aus.'); },
+  'lt-tog'() { S.p.lockTimer = S.p.lockTimer === false; saveProfile(); render(); },
   'rd-tog'() { S.p.readyCheck = S.p.readyCheck === false; saveProfile(); render(); },
   'pl-open'(v) { S.ui.pv = v; S.ui.pedit = false; S.ui.pdel = false; render(); window.scrollTo(0, 0); },
   'pl-back'() { S.ui.pv = null; S.ui.pedit = false; render(); window.scrollTo(0, 0); },
@@ -372,7 +383,7 @@ const ACT = {
     s.done = true;
     /* Live-Rekord: Trophäe, sobald ein Satz einen Bestwert schlägt */
     const nr = liveRecordCheck(it, j);
-    if (nr.length) { showTrophy(EX[it.exId], nr); beep(1320, 180); setTimeout(() => beep(1568, 180), 200); setTimeout(() => beep(2093, 320), 400); Nat.vib(160); }
+    if (nr.length) { showTrophy(EX[it.exId], nr); Nat.garminPr(EX[it.exId], nr); beep(1320, 180); setTimeout(() => beep(1568, 180), 200); setTimeout(() => beep(2093, 320), 400); Nat.vib(160); }
     for (let k = j + 1; k < it.sets.length; k++) if (!it.sets[k].warm && it.sets[k].kg == null) it.sets[k].kg = s.kg;
     const ii = +t.dataset.i, pa = ssPartner(S.active, ii);
     if (!s.warm) S.rest = {end:Date.now() + restFor(it) * 1000, tot:restFor(it)}; else S.rest = {end:Date.now() + 60000, tot:60};
@@ -399,6 +410,8 @@ const ACT = {
   'w-swap'(v, t) { openPicker({mode:'wswap', i:+t.dataset.i, m:EX[S.active.items[+t.dataset.i].exId].m}); },
   'w-rm'(v, t) { const i = +t.dataset.i; if (S.ui.rmI === i) S.ui.wf = null; if (S.ui.rmI !== i) { S.ui.rmI = i; renderWorkout(); setTimeout(() => { if (S.ui.rmI === i) { S.ui.rmI = null; renderWorkout(); } }, 4000); return; } S.ui.rmI = null; S.active.items.splice(i, 1); saveActive(); renderWorkout(); },
   'w-add'() { openPicker({mode:'wadd'}); },
+  'swq-today'() { S.ui.sheet = null; render(); toast('Nur für heute getauscht. Der Plan bleibt.'); },
+  'swq-plan'() { const sh = S.ui.sheet, pl = findPlan(S.p, sh.planId); if (pl) { pl.items.forEach(x => { if (x.exId === sh.old) x.exId = sh.nu; }); saveProfile(); } S.ui.sheet = null; render(); toast('Im Plan ersetzt: ' + EX[sh.nu].name); },
   'tro-x'() { hideTrophy(); },
   /* Hoher Wert nach dem Training: bestätigen oder korrigieren */
   'odd-ok'(id) { const sh = S.ui.sheet, c = sh.ch.find(x => x.id === id && x.odd); if (!c) return; S.p.e1[id] = c.est; S.p.adj[id] = 0; c.odd = false; c.to = c.est; saveProfile(); renderSheet(); toast(EX[id].name + ': 1RM ' + fkg(c.est) + ' übernommen.'); },
@@ -473,7 +486,11 @@ const ACT = {
     if (sh.mode === 'pswap') { S.p.swaps[sh.key] = v; saveProfile(); toast('Getauscht: ' + EX[v].name); }
     else if (sh.mode === 'pladd') { findPlan(S.p, S.ui.pv).items.push({exId:v}); saveProfile(); toast(EX[v].name + ' hinzugefügt.'); }
     else if (sh.mode === 'plswap') { findPlan(S.p, S.ui.pv).items[sh.i].exId = v; saveProfile(); toast('Getauscht: ' + EX[v].name); }
-    else if (sh.mode === 'wswap') { const old = a.items[sh.i]; a.items[sh.i] = itemFromPlan(exPlan(S.p, v, old.plan.slot, a.pr, S.sessions)); saveActive(); }
+    else if (sh.mode === 'wswap') {
+      const old = a.items[sh.i]; a.items[sh.i] = itemFromPlan(exPlan(S.p, v, old.plan.slot, a.pr, S.sessions)); saveActive();
+      const pl = a.planId && findPlan(S.p, a.planId);
+      if (pl && old.exId !== v && pl.items.some(x => x.exId === old.exId)) { S.ui.sheet = {t:'swapq', old:old.exId, nu:v, planId:a.planId}; render(); return; } /* nur heute oder auch im Plan? */
+    }
     else if (sh.mode === 'wadd') { a.items.push(itemFromPlan(exPlan(S.p, v, a.items.length, a.pr, S.sessions))); saveActive(); }
     S.ui.sheet = null; render();
     if (sh.mode === 'wadd') setTimeout(() => { const sc = $('#woscroll'); if (sc) sc.scrollTop = sc.scrollHeight; }, 30);
@@ -668,6 +685,8 @@ if (S.p && S.p.done && (S.p.v || 1) < 4) {
   (S.p.programs || []).forEach(pg => pg.plans.forEach(pl => pl.items.forEach(it => { if (it.exId === 'towel-hang' && /^Wake /.test(pl.name)) it.exId = 'dead-hang'; })));
   saveProfile();
 }
+/* Einmalig (Version 1.24): Verletzungsvorsorge für Wakeboarder an */
+if (S.p && S.p.done && (S.p.v || 1) < 5) { S.p.v = 5; if (S.p.wake && S.p.prehab === undefined) S.p.prehab = true; saveProfile(); }
 if (S.p && S.p.done) checkBadges(true); /* bestehende Erfolge still vergeben */
 S.tab = tryLS(() => localStorage.getItem(LS + '.tab')) || 'today';
 /* alte Bereichsnamen aus Version 1.x */

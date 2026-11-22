@@ -61,6 +61,7 @@ const Nat = {
   restSchedule(force) {
     if (!NATIVE || !this.P) return;
     this.garminSoon();
+    this.lockTimer();
     /* Uhr-App läuft: sie zeigt Pause und Satz selbst, keine zusätzlichen Benachrichtigungen */
     if (this.garminLive() && this.P.W) { this.P.W.disarm().catch(() => {}); return; }
     if (!this.P.W) return this.restScheduleLN(force);
@@ -70,6 +71,14 @@ const Nat = {
     const q = watchQueue(S.active, S.ui.wf);
     if (!q.length) { this.P.W.disarm().catch(() => {}); return; }
     this.P.W.arm({queue:q, at:restOn ? S.rest.end : 0}).catch(() => {});
+  },
+  /* Stiller Pausen-Countdown auf dem Sperrbildschirm, wenn die Uhr-App nicht läuft */
+  lockTimer() {
+    if (!this.P || !this.P.W) return;
+    const on = S.active && S.rest && S.rest.end > Date.now() + 2000 && S.p && S.p.lockTimer !== false && !this.garminLive();
+    if (!on) { this.P.W.restLiveCancel().catch(() => {}); return; }
+    const q = watchQueue(S.active, S.ui.wf)[0];
+    this.P.W.restLive({end:S.rest.end, title:'Pause', body:q ? 'Als Nächstes: ' + q.n + ' · ' + q.l + ' · ' + q.w : 'Gleich weiter'}).catch(() => {});
   },
   /* Rückfall ohne Uhr-Plugin: einfache Benachrichtigung am Pausenende */
   restScheduleLN(force) {
@@ -85,22 +94,54 @@ const Nat = {
   garminMsg(e) {
     const d = e && e.data; if (!d || typeof d !== 'object') return;
     S.giq = {t:Date.now(), dev:e.device || 'Uhr'};
-    if (d.t === 'hi') { this.garminPush(); if (S.ui.more === 'set') render(); return; }
-    if (d.t === 'done' && S.active && (!d.w || d.w === S.active.id) && Array.isArray(d.d)) {
-      const evs = d.d.filter(x => Array.isArray(x) && x.length >= 3).map(x => ({i:+x[0], s:+x[1], t:+x[2] * 1000}));
-      const n = watchApply(evs); if (n && this.P.W) this.P.W.disarm().catch(() => {});
-      this.garminPush();
+    if (d.t === 'hi') {
+      if (d.bb != null) bioStore(d);
+      this.garminPush(); this.garminWakeList();
+      if (S.ui.more === 'set' || (S.ui.sheet && S.ui.sheet.t === 'ready')) { if (S.ui.sheet && S.ui.sheet.t === 'ready') { hcPrefill(S.ui.sheet.a); renderSheet(); } else render(); }
+      return;
     }
+    if (d.t === 'done' && S.active && (!d.w || d.w === S.active.id) && Array.isArray(d.d)) {
+      const evs = d.d.filter(x => Array.isArray(x) && x.length >= 3).map(x => ({i:+x[0], s:+x[1], t:+x[2] * 1000, kg:x.length > 3 && x[3] !== null && x[3] !== '' ? +x[3] : null, reps:x.length > 4 && x[4] ? +x[4] : null, hr:x.length > 5 && x[5] ? +x[5] : null}));
+      const n = watchApply(evs, true); if (n && this.P.W) this.P.W.disarm().catch(() => {});
+      this.garminPush(); return;
+    }
+    if (d.t === 'feel' && S.active && (!d.w || d.w === S.active.id)) {
+      const it = S.active.items[+d.i]; if (it && RIR[d.f] !== undefined) { it.feel = d.f; saveActive(); renderWorkout(); }
+      return;
+    }
+    if (d.t === 'wk?') { this.garminWakeList(); return; }
+    if (d.t === 'wake' || d.t === 'wend') { wakeFromWatch(d); return; }
+  },
+  /* Neuer Rekord: Pokal auf der Uhr */
+  garminPr(e, recs) {
+    if (!NATIVE || !this.P || !this.P.G || !this.garminLive() || !recs || !recs.length) return;
+    const r = recs[0];
+    this.P.G.send({data:{t:'pr', n:e.name.split(' (')[0], d:REC_T[r.k] + ': ' + recFmt(r.k, r)}}).catch(() => {});
+  },
+  /* Tagesform-Check: Body Battery von der Uhr holen (läuft die Uhr-App nicht, fragt die Uhr nach dem Öffnen) */
+  garminBio() {
+    if (!NATIVE || !this.P || !this.P.G) return;
+    if (this.garminLive()) this.P.G.send({data:{t:'bio?'}}).catch(() => {});
+    else if (S.gstat && S.gstat.installed) this.P.G.open().catch(() => {});
+  },
+  garminWakeList() {
+    if (!NATIVE || !this.P || !this.P.G) return;
+    this.P.G.send({data:{t:'wl', l:wakeWatchList()}}).catch(() => {});
   },
   garminSoon() { if (!NATIVE || !this.P || !this.P.G) return; clearTimeout(this.gT); this.gT = setTimeout(() => this.garminPush(), 400); },
   garminPush() {
     if (!NATIVE || !this.P || !this.P.G) return;
     let data;
-    if (!S.active) { if (!this.gLastW) return; data = {t:'end'}; this.gLastW = null; }
+    if (!S.active) { data = this.gLastW ? {t:'end', nx:nextWorkoutText(), se:S.p.season || ''} : {t:'info', nx:nextWorkoutText(), se:S.p.season || ''}; this.gLastW = null; }
     else {
-      const q = watchQueue(S.active, S.ui.wf).slice(0, 24).map(x => ({i:x.i, s:x.s, n:x.n, l:x.l, w:x.w, r:Math.round(x.rest / 1000)}));
+      const q = watchQueue(S.active, S.ui.wf).slice(0, 24).map(x => {
+        const it = S.active.items[x.i], st = it.sets[x.s], e = EX[it.exId], kg = setKgCarry(it, x.s), m = it.plan.mode;
+        return {i:x.i, s:x.s, n:x.n, l:x.l, w:x.w, r:Math.round(x.rest / 1000), kg:kg == null ? -1 : kg, rp:st.reps || it.plan.reps || 0,
+          st:incOf(S.p, e), u:it.plan.unit || (m === 'time' ? 's' : 'Wdh.'), kgp:(m === 'bw' || (m === 'time' && e.eq === 'KG')) ? 1 : 0,
+          x:it.sets.findIndex((q2, k) => k > x.s && !q2.done) < 0 ? 1 : 0};
+      });
       const re = S.rest && S.rest.end > Date.now() + 1000 ? Math.round(S.rest.end / 1000) : 0;
-      data = {t:'q', w:S.active.id, n:S.active.name || 'Training', q, re, rt:re ? (S.rest.tot || Math.round((S.rest.end - Date.now()) / 1000)) : 0};
+      data = {t:'q', w:S.active.id, n:S.active.name || 'Training', q, re, rt:re ? (S.rest.tot || Math.round((S.rest.end - Date.now()) / 1000)) : 0, hr:S.p.hrRest || 0, nx:nextWorkoutText(), se:S.p.season || ''};
       this.gLastW = S.active.id;
     }
     this.P.G.send({data}).then(r => { if (r && r.status && r.status.includes('SUCCESS') && S.active) { if (!S.giq) S.giq = {t:Date.now(), dev:'Uhr'}; } }).catch(() => {});
@@ -228,13 +269,14 @@ function watchQueue(a, focus) {
   return out;
 }
 /* Von der Uhr bestätigte Sätze eintragen: geplantes Gewicht × Wdh., Pause ab Bestätigungszeit */
-function watchApply(evs) {
+function watchApply(evs, fromGarmin) {
   const a = S.active; if (!a || !evs.length) return 0;
   let n = 0, last = null; const recs = [];
   evs.sort((x, y) => x.t - y.t).forEach(ev => {
     const it = a.items[ev.i], st = it && it.sets[ev.s]; if (!st || st.done) return;
-    if (st.kg == null) st.kg = setKgCarry(it, ev.s);
-    if (!(st.reps > 0)) st.reps = it.plan.reps || 1;
+    if (ev.kg != null && ev.kg >= 0) st.kg = ev.kg; else if (st.kg == null) st.kg = setKgCarry(it, ev.s);
+    if (ev.reps > 0) st.reps = ev.reps; else if (!(st.reps > 0)) st.reps = it.plan.reps || 1;
+    if (ev.hr > 0) st.hr = ev.hr;
     st.done = true; st.watch = true; n++; last = ev;
     for (let k = ev.s + 1; k < it.sets.length; k++) if (!it.sets[k].warm && it.sets[k].kg == null) it.sets[k].kg = st.kg;
     const nr = liveRecordCheck(it, ev.s); if (nr.length) recs.push([EX[it.exId], nr]);
@@ -244,9 +286,66 @@ function watchApply(evs) {
   S.rest = end > Date.now() + 1000 ? {end, tot:Math.round(restAfterSet(a, last.i, last.s) / 1000)} : null;
   if (S.ui.wf != null) { const it = a.items[S.ui.wf], nx = it ? it.sets.findIndex(q => !q.done) : -1; S.ui.ws = nx >= 0 ? nx : null; } /* Übung fertig: Gefühl abfragen, dann weiter */
   saveActive(); renderWorkout(); renderRest();
-  if (recs.length) showTrophy(recs[0][0], recs[0][1]);
+  if (recs.length) { showTrophy(recs[0][0], recs[0][1]); if (fromGarmin) Nat.garminPr(recs[0][0], recs[0][1]); }
   toast(n === 1 ? 'Satz von der Uhr übernommen.' : n + ' Sätze von der Uhr übernommen.');
   return n;
+}
+/* Nächstes Training als kurzer Text für die Uhr (Glance) */
+function nextWorkoutText() {
+  if (!S.p || !S.p.done) return '';
+  if (S.active) return 'Training läuft';
+  const np = nextPlan(S.p, S.sessions), name = np && np.plan ? np.plan.name : 'Training';
+  for (let i = 0; i < 15; i++) {
+    const d = addDays(todayStr(), i); if (!planForDate(S.p, d)) continue;
+    if (typeof inSeasonPause === 'function' && inSeasonPause(d)) continue;
+    if (i === 0 && S.sessions.some(x => x.date === d)) continue;
+    const dt = parseD(d), lab = i === 0 ? 'Heute' : i === 1 ? 'Morgen' : DAYS[wdOf(d)] + ' ' + dt.getDate() + '.' + (dt.getMonth() + 1) + '.';
+    return lab + ' · ' + name;
+  }
+  return '';
+}
+/* Body Battery und Stress von der Uhr (beim Öffnen der Uhr-App) */
+function bioStore(d) {
+  S.bio = {t:Date.now(), bb:+d.bb, bbx:d.bbx != null ? +d.bbx : +d.bb, st:d.st != null ? +d.st : null};
+  const log = S.p.bbLog = S.p.bbLog || {}; log[todayStr()] = Math.max(log[todayStr()] || 0, S.bio.bbx);
+  Object.keys(log).sort().slice(0, -30).forEach(k => delete log[k]);
+  saveProfile();
+}
+function bioSummary() {
+  if (!S.bio || Date.now() - S.bio.t > 12 * 3600e3) return null;
+  const log = S.p.bbLog || {}, prev = Object.keys(log).filter(k => k < todayStr()).sort().slice(-14).map(k => log[k]);
+  const med = prev.length >= 5 ? prev.slice().sort((a, b) => a - b)[prev.length >> 1] : null;
+  const low = S.bio.bbx <= 35 || (med !== null && S.bio.bbx <= med - 20);
+  return {...S.bio, base:med, low};
+}
+/* Trickliste für den Wake-Modus der Uhr: Ziele, angefangene Tricks, nächste Schritte */
+function wakeWatchList() {
+  const out = [], seen = {}, add = (id, k) => { const t = TRICKS.find(x => x.id === id); if (!t || seen[id + k] || out.length >= 16) return; seen[id + k] = 1; out.push({id, k, n:t.name + (k === 'w' ? ' (Sw)' : '')}); };
+  (S.p.wakeGoals || []).forEach(g => add(g.id, g.k));
+  TRICKS.forEach(t => ['s', 'w'].forEach(k => { if (tSt(t.id, k) === 1) add(t.id, k); }));
+  nextTricks(30).forEach(x => add(x.t.id, x.k));
+  return out;
+}
+/* Wake-Session von der Uhr: Versuche in den Entwurf übernehmen, am Ende speichern */
+function wakeFromWatch(d) {
+  if (!d.w || (S.p.wkSaved || []).includes(d.w)) return; /* schon gespeichert */
+  S.wkw = S.wkw || {};
+  let f = S.ui.wf2; if (!f || f.hist === undefined) f = S.ui.wf2 = newWf();
+  const old = S.wkw[d.w] || [], log = (Array.isArray(d.d) ? d.d : []).filter(x => Array.isArray(x) && x.length >= 3 && TRICKS.some(t => t.id === String(x[0])));
+  /* frühere Einträge dieser Uhr-Session herausrechnen, dann die aktuelle Liste neu zählen (Zurücknehmen auf der Uhr wirkt so auch hier) */
+  const apply = (x, sign) => { const id = String(x[0]), kk = x[1] === 'w' ? 'w' : 's', l = +x[2] ? 1 : 0, c = selOf(f, id)[kk] = selOf(f, id)[kk] || {a:0, l:0}; c.a = Math.max(0, c.a + sign); c.l = Math.max(0, c.l + sign * l); };
+  old.forEach(x => apply(x, -1)); log.forEach(x => apply(x, 1));
+  S.wkw[d.w] = log;
+  if (d.t === 'wend') {
+    S.p.wkSaved = S.p.wkSaved || [];
+    if (S.p.wkSaved.includes(d.w)) return;
+    if (d.min > 0 && !(parseNum(f.min) > 0)) f.min = String(d.min);
+    if (d.laps > 0 && !(parseNum(f.laps) > 0)) f.laps = String(d.laps);
+    S.p.wkSaved.push(d.w); S.p.wkSaved = S.p.wkSaved.slice(-20);
+    wakeSave();
+    return;
+  }
+  if (S.tab === 'wake') render();
 }
 let reschedT = null;
 function reschedSoon() { clearTimeout(reschedT); reschedT = setTimeout(() => Nat.reschedule(), 2000); }

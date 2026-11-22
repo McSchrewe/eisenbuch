@@ -171,7 +171,7 @@ function vStats() {
   if (seg === 'rec') return h + vRecords();
   const mon = mondayOf(todayStr()), wv = weeklyVolume(S.sessions, 10), v4 = wv.slice(-4).reduce((a, b) => a + b.v, 0);
   h += '<div class="stats tiles"><div><small>Einheiten</small><b>' + S.sessions.length + '</b></div><div><small>Diese Woche</small><b>' + weekCount(mon) + '</b><small>+ ' + weekRuns(mon) + ' Lauf</small></div><div><small>Serie</small><b>' + weekStreak() + ' Wo.</b></div></div>';
-  h += liftCard(S.ui.sper || '3M') + workoutCard() + muscleCard() + volCard() + sweetCard() + plateauCard();
+  h += liftCard(S.ui.sper || '3M') + prognoseCard() + balanceCard() + workoutCard() + muscleCard() + volCard() + sweetCard() + plateauCard();
   h += '<div class="card"><h2>Volumen pro Woche</h2><p class="readout" data-ro>Diese Woche: ' + volT(wv[wv.length - 1].v) + '</p>' + barChart(wv, 't', 'Trainingsvolumen pro Woche', volT) +
     '<p class="hint" style="margin-top:6px">Gewicht × Wiederholungen aller Arbeitssätze. Letzte 4 Wochen: ' + volT(v4) + '.</p></div>';
   return h;
@@ -293,7 +293,8 @@ function garminRow() {
   else if (!g.devices || !g.devices.length) t = 'Keine Uhr verbunden (Bluetooth / Garmin Connect prüfen).';
   else if (!g.installed) t = esc(g.devices[0]) + ' verbunden, Eisenbuch-App auf der Uhr fehlt noch.';
   else t = esc(g.devices[0]) + ': Uhr-App installiert' + (Nat.garminLive() ? ', aktiv' : '') + '.';
-  return '<div class="row" style="margin-top:12px"><span><b>Garmin-Uhr-App</b><br><small>' + t + ' Satz bestätigen und Pausen-Timer direkt auf der Uhr.</small></span>' + (g.installed ? '<button class="chip" data-act="g-open">Auf Uhr öffnen</button>' : '<button class="chip" data-act="g-refresh">Prüfen</button>') + '</div>';
+  return '<div class="row" style="margin-top:12px"><span><b>Garmin-Uhr-App</b><br><small>' + t + ' Satz bestätigen und Pausen-Timer direkt auf der Uhr.</small></span>' + (g.installed ? '<button class="chip" data-act="g-open">Auf Uhr öffnen</button>' : '<button class="chip" data-act="g-refresh">Prüfen</button>') + '</div>' +
+    (g.installed ? '<label class="lab">Pause erst vorbei, wenn der Puls darunter ist</label><div class="chips">' + [[0, 'Aus'], [100, '100 bpm'], [110, '110 bpm'], [120, '120 bpm']].map(x => '<button class="chip" data-act="hr-rest" data-v="' + x[0] + '" aria-pressed="' + ((S.p.hrRest || 0) === x[0]) + '">' + x[1] + '</button>').join('') + '</div><p class="hint">Höchstens 60 s länger als geplant. Gut für die Runden-Simulation im Power-Block.</p>' : '');
 }
 /* Benachrichtigungs-Status mit direkter Abhilfe */
 function notifRow() {
@@ -309,10 +310,12 @@ function vSettings() {
       (p.remind.on ? '<label class="lab" for="p-lead">Vorlauf</label><select id="p-lead" data-chg="lead">' + [[0,'Zur Trainingszeit'],[15,'15 min vorher'],[30,'30 min vorher'],[60,'1 h vorher'],[120,'2 h vorher']].map(a => '<option value="' + a[0] + '"' + (p.remind.lead === a[0] ? ' selected' : '') + '>' + a[1] + '</option>').join('') + '</select>' : '') : '') +
     '<div class="row" style="margin-top:14px"><span><b>Wakeboard-Fokus</b><br><small>Griff-Finisher am Ende jeder Einheit</small></span><button class="chip" data-act="g-wake" aria-pressed="' + !!p.wake + '">' + (p.wake ? 'An' : 'Aus') + '</button></div></div>' +
     '<div class="card"><h2>Training</h2>' +
+    '<div class="row"><span><b>Prehab vorneweg</b><br><small>Ca. 8 min: Nordic Curls, Außenrotation, Copenhagen Plank, Einbeinstand im Wechsel</small></span><button class="chip" data-act="ph-tog" aria-pressed="' + !!p.prehab + '">' + (p.prehab ? 'An' : 'Aus') + '</button></div>' +
     '<div class="row"><span><b>Tagesform-Check</b><br><small>3 Fragen vor dem Start, passt Sätze und Last an</small></span><button class="chip" data-act="rd-tog" aria-pressed="' + (p.readyCheck !== false) + '">' + (p.readyCheck !== false ? 'An' : 'Aus') + '</button></div>' +
     '<div class="row" style="margin-top:12px"><span><b>Volumensteuerung</b><br><small>±1 Satz je Muskel nach Fortschritt, wöchentlich</small></span><button class="chip" data-act="vol-tog" aria-pressed="' + (p.volAuto !== false) + '">' + (p.volAuto !== false ? 'An' : 'Aus') + '</button></div>' +
     ('<div class="row" style="margin-top:12px"><span><b>Smartwatch-Modus</b><br><small>Uhr vibriert am Pausenende und zeigt Gewicht × Wdh. „✓ Geschafft“ auf der Uhr trägt den Satz ein und startet die nächste Pause, ohne Handy</small></span><button class="chip" data-act="watch-tog" aria-pressed="' + (p.watch !== false) + '">' + (p.watch !== false ? 'An' : 'Aus') + '</button></div>' +
       garminRow() + notifRow() +
+      '<div class="row" style="margin-top:12px"><span><b>Pausen-Countdown auf dem Sperrbildschirm</b><br><small>Still, ohne Ton. Aus, solange die Uhr-App läuft</small></span><button class="chip" data-act="lt-tog" aria-pressed="' + (p.lockTimer !== false) + '">' + (p.lockTimer !== false ? 'An' : 'Aus') + '</button></div>' +
       '<div class="row" style="margin-top:12px"><span><b>Health Connect</b><br><small>Schlaf und Nachtpuls der Uhr (Garmin Connect → Health Connect) im Tagesform-Check</small></span><button class="chip" data-act="hc-tog" aria-pressed="' + !!p.hc + '">' + (p.hc ? 'An' : 'Aus') + '</button></div>' +
       (p.watch !== false ? '<details style="margin-top:8px"><summary>Garmin einrichten</summary><div class="stack" style="padding:6px 0"><p>1. Hier in Eisenbuch Benachrichtigungen erlauben (Zeile oben). Ohne das kommt weder aufs Handy noch auf die Uhr etwas.</p><p>2. Garmin Connect: Smart Notifications für die Venu 3 an. Unter Android spiegelt Garmin standardmäßig alle Apps, ein eigener Schalter für Eisenbuch ist nicht nötig.</p><p>3. „Während Aktivität“ zählt nur, wenn du auf der Uhr eine Aktivität (z. B. Krafttraining) startest. Ohne Uhr-Aktivität gilt „Nicht während Aktivität“.</p><p>4. Mit „Test an Uhr senden“ prüfen: Handy sperren, nach 5 s vibriert die Uhr. Auf der Uhr nach oben wischen und <b>✓ Geschafft</b> wählen.</p><p>5. Für Health Connect: Garmin Connect → Einstellungen → Verbundene Apps → Health Connect, Schlaf und Herzfrequenz freigeben.</p></div></details>' : '')) + '</div>' +
     '<div class="card"><h2>Dein Studio</h2><p class="hint">Kleinster Gewichtsschritt je Gerät. Die App rundet alle Vorgaben darauf.</p>' +

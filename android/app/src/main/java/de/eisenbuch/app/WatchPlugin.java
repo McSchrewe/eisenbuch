@@ -90,6 +90,50 @@ public class WatchPlugin extends Plugin {
         try { c.startActivity(i); call.resolve(); } catch (Exception e) { call.reject(e.getMessage()); }
     }
 
+    /** Stiller Pausen-Countdown auf dem Sperrbildschirm (ohne Ton, ohne Vibration), verschwindet am Pausenende */
+    @PluginMethod
+    public void restLive(PluginCall call) {
+        Context c = getContext();
+        long end = call.getLong("end", 0L);
+        long left = end - System.currentTimeMillis();
+        if (Build.VERSION.SDK_INT < 26 || left < 2000) { call.resolve(); return; }
+        NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) { call.resolve(); return; }
+        if (nm.getNotificationChannel("eb_rest_live") == null) {
+            NotificationChannel ch = new NotificationChannel("eb_rest_live", "Pausen-Countdown", NotificationManager.IMPORTANCE_LOW);
+            ch.setDescription("Laufende Pause auf dem Sperrbildschirm, ohne Ton");
+            ch.setSound(null, null);
+            ch.enableVibration(false);
+            ch.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
+            nm.createNotificationChannel(ch);
+        }
+        Intent open = c.getPackageManager().getLaunchIntentForPackage(c.getPackageName());
+        android.app.PendingIntent oi = open == null ? null : android.app.PendingIntent.getActivity(c, 9203, open, android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
+        android.app.Notification.Builder b = new android.app.Notification.Builder(c, "eb_rest_live")
+            .setSmallIcon(R.drawable.ic_stat_eisenbuch)
+            .setContentTitle(call.getString("title", "Pause"))
+            .setContentText(call.getString("body", ""))
+            .setWhen(end)
+            .setShowWhen(true)
+            .setUsesChronometer(true)
+            .setChronometerCountDown(true)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setCategory(android.app.Notification.CATEGORY_PROGRESS)
+            .setVisibility(android.app.Notification.VISIBILITY_PUBLIC)
+            .setTimeoutAfter(left);
+        if (oi != null) b.setContentIntent(oi);
+        try { nm.notify(9202, b.build()); } catch (SecurityException ignored) {}
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void restLiveCancel(PluginCall call) {
+        NotificationManager nm = (NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm != null) nm.cancel(9202);
+        call.resolve();
+    }
+
     static void emitDone() {
         WatchPlugin p = instance;
         if (p != null) p.notifyListeners("done", new JSObject());

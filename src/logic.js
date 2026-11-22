@@ -160,6 +160,9 @@ box-jump|Box Jumps (weiche Landung)|Quadrizeps|KG|p
 skater|Skater-Sprünge (einbeinige Landung)|Quadrizeps|KG|p
 handle-hold|Handle-Hold zweihändig (Kabel, Hüfthöhe)|Rücken|KB|t
 repeaters|Repeaters 7/3 s (Hang-Zyklen)|Unterarme|KG|
+aussenrotation|Außenrotation am Kabel (Schulter)|Schultern|KB
+copenhagen|Copenhagen Plank (je Seite)|Core|KG|t
+balance-einbein|Einbeinstand auf weicher Unterlage (je Bein)|Ganzkörper|KG|t
 seil-rudern|Rudern am Seilgriff (Kabel)|Rücken|KB|c
 power-clean|Power Clean|Ganzkörper|LH|cl
 thruster|Thrusters|Ganzkörper|LH|c
@@ -566,12 +569,26 @@ function buildWorkout(p, sessions, n, planId, opt) {
   const items = ids.map((id, i) => exPlan(p, id, i, pr, sessions));
   items.forEach((it, i) => { it.ss = lst[i].ss && i < items.length - 1; }); /* Supersatz mit der nächsten Übung */
   if (typeof applyVol === 'function') applyVol(p, items, pr); /* Volumensteuerung je Muskel */
+  /* Verletzungsvorsorge (Knie, Sprunggelenk, Schulter): 2 kurze Übungen vorneweg, im Wechsel */
+  if (p.prehab && !pr.prep) prehabItems(p, n, pr, sessions).reverse().forEach(it => { if (!items.some(x => x.exId === it.exId)) items.unshift(it); });
   /* Wakeboard-Fokus: Griff-Finisher, außer der Plan fordert den Griff schon (Unterarm-, Hang- oder Halteübung) */
   const GRIP_HEAVY = ['hanging-leg','hanging-knee','handle-hold','toes-bar','klimmzuege','klimmzug-unter','klimmzug-neutral'];
   const rot = GRIP_BY_PHASE[pr.phase] || GRIP_ROT;
   if (p.wake && pr.phase !== 'taper' && !ids.some(id => EX[id].m === 'Unterarme' || (GRIP_HEAVY.includes(id) && pr.phase !== 'power'))) items.push(exPlan(p, rot[n % rot.length], 99, pr, sessions));
   const est = 5 + items.reduce((a, it) => a + it.sets * (it.mode === 'pct' ? 3.5 : 2.3), 0);
   return {planId:plan.id, tplId:plan.id, name:plan.name, color:plan.color, pr, items, est:Math.round(est / 5) * 5};
+}
+
+/* Prehab-Block: A = Nordic Curls + Außenrotation, B = Copenhagen Plank + Einbeinstand. Ca. 8 min, zählt nicht als Hauptarbeit. */
+const PREHAB = [['nordic', 'aussenrotation'], ['copenhagen', 'balance-einbein']];
+function prehabItems(p, n, pr, sessions) {
+  return PREHAB[n % 2].map((id, k) => {
+    const it = exPlan(p, id, 90 + k, {...pr, phase:null, nip:null, deload:false}, sessions);
+    if (id === 'nordic') return {...it, sets:2, rng:[3, 6], reps:Math.max(3, Math.min(6, it.reps || 3)), kg:0, prehab:true, rest:90, desc:'Prehab · 2 × 3–6, langsam ablassen (ca. 4 s)'};
+    if (id === 'aussenrotation') return {...it, sets:2, rng:[12, 15], reps:Math.max(12, it.reps || 12), prehab:true, rest:45, desc:'Prehab · 2 × 12–15 je Arm, leicht, Ellbogen am Körper'};
+    if (id === 'copenhagen') return {...it, sets:2, reps:Math.max(15, Math.min(40, it.reps || 20)), prehab:true, rest:45, desc:'Prehab · 2 × je Seite halten'};
+    return {...it, sets:2, reps:Math.max(30, Math.min(60, it.reps || 30)), prehab:true, rest:30, desc:'Prehab · 2 × je Bein, Augen zu macht es schwerer'};
+  });
 }
 
 /* ===== Fortschritt nach einer Einheit ===== */
