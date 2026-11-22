@@ -50,6 +50,11 @@
         </provider>
     </application>
 
+    <!-- Garmin Connect für die Uhr-App (Connect IQ) -->
+    <queries>
+        <package android:name="com.garmin.android.apps.connectmobile" />
+    </queries>
+
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />

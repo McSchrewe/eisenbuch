@@ -13,6 +13,7 @@ public class MainActivity extends BridgeActivity {
         setTheme(R.style.AppTheme_NoActionBar);
         registerPlugin(WatchPlugin.class);
         registerPlugin(HealthPlugin.class);
+        registerPlugin(GarminPlugin.class);
         super.onCreate(savedInstanceState);
         applyBars();
         // Kein Zoomen wie in normalen Apps

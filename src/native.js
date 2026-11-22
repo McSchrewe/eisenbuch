@@ -12,7 +12,9 @@ const Nat = {
     const reg = (window.capacitorExports && window.capacitorExports.registerPlugin) || (window.Capacitor && window.Capacitor.registerPlugin);
     if (!reg) throw new Error('registerPlugin fehlt');
     const R = n => reg(n);
-    this.P = {LN:R('LocalNotifications'), FS:R('Filesystem'), SH:R('Share'), HA:R('Haptics'), APP:R('App'), W:R('Watch'), H:R('Health')};
+    this.P = {LN:R('LocalNotifications'), FS:R('Filesystem'), SH:R('Share'), HA:R('Haptics'), APP:R('App'), W:R('Watch'), H:R('Health'), G:R('Garmin')};
+    /* Eisenbuch-App auf der Garmin-Uhr: Nachrichten (hi, done) */
+    try { this.P.G.addListener('msg', e => this.garminMsg(e)); } catch (e) { this.P.G = null; }
     /* „✓ Geschafft“ auf Uhr oder Handy, während die App offen ist: sofort übernehmen */
     try { this.P.W.addListener('done', () => this.watchSync()); } catch (e) { this.P.W = null; }
     /* Starttest-Zeilen für den Emulator-Test in GitHub Actions */
@@ -58,6 +60,9 @@ const Nat = {
      Mit Uhr-Modus immer, sonst nur wenn die App im Hintergrund ist. */
   restSchedule(force) {
     if (!NATIVE || !this.P) return;
+    this.garminSoon();
+    /* Uhr-App läuft: sie zeigt Pause und Satz selbst, keine zusätzlichen Benachrichtigungen */
+    if (this.garminLive() && this.P.W) { this.P.W.disarm().catch(() => {}); return; }
     if (!this.P.W) return this.restScheduleLN(force);
     const watchOn = !S.p || S.p.watch !== false, restOn = !!(S.rest && S.active && S.rest.end > Date.now() + 1500);
     /* Vordergrund ohne Pause: nichts auf der Uhr. Ohne Uhr-Modus nur im Hintergrund. */
@@ -74,6 +79,38 @@ const Nat = {
     const q = watchQueue(S.active, S.ui.wf); if (!q.length) return;
     this.P.LN.schedule({notifications:[{id:9001, title:'Pause vorbei · ' + q[0].title, body:q[0].body, channelId:'rest', actionTypeId:'set', schedule:{at:new Date(S.rest.end), allowWhileIdle:true}, extra:{go:'train', i:q[0].i, s:q[0].s}}]}).catch(() => {});
   },
+  /* ----- Garmin Connect IQ: Eisenbuch-App auf der Uhr ----- */
+  gT:null, gLastW:null,
+  garminLive() { return !!(S.giq && Date.now() - S.giq.t < 15 * 60000); },
+  garminMsg(e) {
+    const d = e && e.data; if (!d || typeof d !== 'object') return;
+    S.giq = {t:Date.now(), dev:e.device || 'Uhr'};
+    if (d.t === 'hi') { this.garminPush(); if (S.ui.more === 'set') render(); return; }
+    if (d.t === 'done' && S.active && (!d.w || d.w === S.active.id) && Array.isArray(d.d)) {
+      const evs = d.d.filter(x => Array.isArray(x) && x.length >= 3).map(x => ({i:+x[0], s:+x[1], t:+x[2] * 1000}));
+      const n = watchApply(evs); if (n && this.P.W) this.P.W.disarm().catch(() => {});
+      this.garminPush();
+    }
+  },
+  garminSoon() { if (!NATIVE || !this.P || !this.P.G) return; clearTimeout(this.gT); this.gT = setTimeout(() => this.garminPush(), 400); },
+  garminPush() {
+    if (!NATIVE || !this.P || !this.P.G) return;
+    let data;
+    if (!S.active) { if (!this.gLastW) return; data = {t:'end'}; this.gLastW = null; }
+    else {
+      const q = watchQueue(S.active, S.ui.wf).slice(0, 24).map(x => ({i:x.i, s:x.s, n:x.n, l:x.l, w:x.w, r:Math.round(x.rest / 1000)}));
+      const re = S.rest && S.rest.end > Date.now() + 1000 ? Math.round(S.rest.end / 1000) : 0;
+      data = {t:'q', w:S.active.id, n:S.active.name || 'Training', q, re, rt:re ? (S.rest.tot || Math.round((S.rest.end - Date.now()) / 1000)) : 0};
+      this.gLastW = S.active.id;
+    }
+    this.P.G.send({data}).then(r => { if (r && r.status && r.status.includes('SUCCESS') && S.active) { if (!S.giq) S.giq = {t:Date.now(), dev:'Uhr'}; } }).catch(() => {});
+  },
+  garminOpen() { if (!NATIVE || !this.P || !this.P.G) return; setTimeout(() => this.P.G.open().then(r => { if (r && r.status === 'APP_IS_ALREADY_RUNNING') this.garminPush(); }).catch(() => {}), 800); },
+  async garminStatus() {
+    if (!NATIVE || !this.P || !this.P.G) return null;
+    try { const st = await this.P.G.status(), ins = st.devices && st.devices.length ? await this.P.G.installed() : {installed:false, device:false}; S.gstat = {...st, ...ins}; } catch (e) { S.gstat = {ready:false, error:String(e && e.message)}; }
+    return S.gstat;
+  },
   /* Auf der Uhr bestätigte Sätze abholen und eintragen */
   async watchSync() {
     if (!NATIVE || !this.P || !this.P.W) return 0;
@@ -89,7 +126,7 @@ const Nat = {
   async fg() {
     await this.watchSync();
     if (S.rest && Date.now() >= S.rest.end) S.rest = null; /* Signal kam schon als Benachrichtigung */
-    renderRest(); this.restSchedule(false); this.reschedule(); this.healthRefresh(); this.notifStatus();
+    renderRest(); this.restSchedule(false); this.reschedule(); this.healthRefresh(); this.notifStatus(); this.garminStatus(); this.garminSoon();
   },
   /* ----- Health Connect: Schlaf und Nachtpuls (z. B. Garmin über Garmin Connect) ----- */
   async healthStatus() { if (!NATIVE || !this.P || !this.P.H) return {available:false}; try { return await this.P.H.status(); } catch (e) { return {available:false}; } },
@@ -168,8 +205,8 @@ function watchEntry(a, i, j) {
   const it = a.items[i], e = EX[it.exId], st = it.sets[j], works = it.sets.filter(q => !q.warm), idx = it.sets.slice(0, j + 1).filter(q => !q.warm).length;
   const kg = setKgCarry(it, j), unit = it.plan.unit || (it.plan.mode === 'time' ? 's' : 'Wdh.'), m = it.plan.mode;
   const kgTxt = kg > 0 ? (m === 'bw' || m === 'time' && e.eq === 'KG' ? '+' : '') + fmt(kg) + ' kg × ' : (m === 'pct' || m === 'dp') ? 'Gewicht? × ' : '';
-  return {i, s:j, title:e.name.split(' (')[0] + ' · ' + (st.warm ? 'Aufwärmen' : (st.top ? 'Topsatz ' : 'Satz ') + idx + '/' + works.length),
-    body:kgTxt + (st.reps || it.plan.reps || '') + ' ' + unit, rest:restAfterSet(a, i, j)};
+  const n = e.name.split(' (')[0], l = st.warm ? 'Aufwärmen' : (st.top ? 'Topsatz ' : 'Satz ') + idx + '/' + works.length, w = kgTxt + (st.reps || it.plan.reps || '') + ' ' + unit;
+  return {i, s:j, n, l, w, title:n + ' · ' + l, body:w, rest:restAfterSet(a, i, j)};
 }
 function watchQueue(a, focus) {
   const out = []; if (!a) return out;
@@ -204,7 +241,7 @@ function watchApply(evs) {
   });
   if (!n) return 0;
   const end = last.t + restAfterSet(a, last.i, last.s);
-  S.rest = end > Date.now() + 1000 ? {end} : null;
+  S.rest = end > Date.now() + 1000 ? {end, tot:Math.round(restAfterSet(a, last.i, last.s) / 1000)} : null;
   if (S.ui.wf != null) { const it = a.items[S.ui.wf], nx = it ? it.sets.findIndex(q => !q.done) : -1; S.ui.ws = nx >= 0 ? nx : null; } /* Übung fertig: Gefühl abfragen, dann weiter */
   saveActive(); renderWorkout(); renderRest();
   if (recs.length) showTrophy(recs[0][0], recs[0][1]);

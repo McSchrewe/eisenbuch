@@ -32,7 +32,7 @@ function lsLoad() {
   const a = tryLS(() => JSON.parse(localStorage.getItem(LS + '.active') || 'null')); if (a && a.items) S.active = a;
   const r = tryLS(() => JSON.parse(localStorage.getItem(LS + '.run') || 'null')); if (r) S.runT = r;
 }
-function saveActive() { tryLS(() => { if (S.active) localStorage.setItem(LS + '.active', JSON.stringify(S.active)); else localStorage.removeItem(LS + '.active'); }); }
+function saveActive() { tryLS(() => { if (S.active) localStorage.setItem(LS + '.active', JSON.stringify(S.active)); else localStorage.removeItem(LS + '.active'); }); if (typeof Nat !== 'undefined' && Nat.garminSoon) Nat.garminSoon(); } /* Garmin-Uhr-App aktuell halten */
 function saveRunT() { tryLS(() => localStorage.setItem(LS + '.run', JSON.stringify(S.runT))); }
 
 /* Cloud-Speicher (privat pro Nutzer) mit lokalem Fallback */

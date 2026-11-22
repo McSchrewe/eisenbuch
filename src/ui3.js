@@ -62,6 +62,7 @@ function startWorkout(free, planId, ready) {
   const rsc = ready ? readyScore(ready) : null; if (!free && rsc !== null) applyReady(w.items, rsc);
   S.active = {id:uid('s'), start:Date.now(), date:todayStr(), planId:w.planId, tplId:w.tplId, name:w.name, n:free || over || w.pr.prep ? null : p.block.n, prep:!!w.pr.prep, ready:ready ? {a:ready, sc:rsc} : null, pr:w.pr, block:p.block.no, items:w.items.map(itemFromPlan)};
   S.ui.woMin = false; S.ui.wf = null; S.ui.ws = null; saveActive(); render(); wake();
+  if (NATIVE) Nat.garminOpen();
   if (NATIVE && p.watch !== false) Nat.ensureNotif().then(ok => { if (!ok) toast('Benachrichtigungen sind blockiert: keine Pausen-Signale auf Handy und Uhr. Mehr → Einstellungen.'); });
   if (free) openPicker({mode:'wadd'});
 }
@@ -322,6 +323,8 @@ const ACT = {
   },
   'n-allow'() { Nat.ensureNotif().then(ok => { if (!ok) Nat.openNotifSettings(); else toast('Benachrichtigungen erlaubt.'); }); },
   'n-settings'() { Nat.openNotifSettings(); },
+  'g-refresh'() { Nat.garminStatus().then(() => render()); },
+  'g-open'() { if (Nat.P && Nat.P.G) Nat.P.G.open().then(r => toast(r.status === 'PROMPT_SHOWN_ON_DEVICE' ? 'Auf der Uhr bestätigen.' : r.status === 'APP_IS_ALREADY_RUNNING' ? 'Uhr-App läuft schon.' : 'Uhr: ' + r.status)).catch(() => toast('Uhr nicht erreichbar.')); },
   'n-test'() {
     if (S.active) { toast('Test geht nur ohne laufendes Training.'); return; }
     Nat.watchTest().then(ok => toast(ok ? 'Test kommt in 5 s. Handy sperren und auf die Uhr schauen.' : 'Benachrichtigungen sind blockiert. Erst erlauben.'));
@@ -372,7 +375,7 @@ const ACT = {
     if (nr.length) { showTrophy(EX[it.exId], nr); beep(1320, 180); setTimeout(() => beep(1568, 180), 200); setTimeout(() => beep(2093, 320), 400); Nat.vib(160); }
     for (let k = j + 1; k < it.sets.length; k++) if (!it.sets[k].warm && it.sets[k].kg == null) it.sets[k].kg = s.kg;
     const ii = +t.dataset.i, pa = ssPartner(S.active, ii);
-    if (!s.warm) S.rest = {end:Date.now() + restFor(it) * 1000}; else S.rest = {end:Date.now() + 60000};
+    if (!s.warm) S.rest = {end:Date.now() + restFor(it) * 1000, tot:restFor(it)}; else S.rest = {end:Date.now() + 60000, tot:60};
     /* Supersatz: nach der ersten Übung ohne Pause direkt zur zweiten, nach der zweiten Pause und zurück */
     if (pa !== null && !s.warm) {
       const other = S.active.items[pa], open = other.sets.findIndex(q => !q.done && !q.warm);
@@ -675,7 +678,7 @@ if (NATIVE) {
   /* Falls der WebView-Speicher leer ist (z. B. nach Wiederherstellung), Sicherungsdatei laden */
   if (!S.p) Nat.loadBackup().then(j => { if (j && j.p) { S.p = normProfile(j.p); S.sessions = j.sessions || []; S.runs = j.runs || []; S.grip = j.grip || []; S.body = j.body || []; lsSave(); render(); toast('Daten aus der Sicherungsdatei wiederhergestellt.'); } Nat.reschedule(); });
   else Nat.reschedule();
-  Nat.watchSync(); Nat.healthRefresh();
+  Nat.watchSync(); Nat.healthRefresh(); Nat.garminStatus();
   /* Einmalig nach dem Update fragen: ohne Erlaubnis keine Pausen-Signale, auch nicht auf der Uhr */
   if (S.p && S.p.done && S.p.watch !== false && !S.p.notifAsked) setTimeout(() => { S.p.notifAsked = true; saveProfile(); Nat.ensureNotif(); }, 1500); else Nat.notifStatus(); /* auf der Uhr bestätigte Sätze, Schlaf/Puls aus Health Connect */
 } else Cloud.init().then(c => { if (c) mergeCloud(c); cloudBadge(); });

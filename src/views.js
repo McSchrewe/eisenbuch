@@ -285,6 +285,16 @@ function vPeri() {
   h += '<div class="row"><span class="sub">Block von vorn beginnen (Werte bleiben)</span><button class="btn sm ghost" data-act="block-restart">Neu starten</button></div>';
   return h;
 }
+/* Eisenbuch-App auf der Garmin-Uhr */
+function garminRow() {
+  const g = S.gstat; if (!g) return '';
+  let t;
+  if (!g.ready) t = g.error === 'GCM_NOT_INSTALLED' ? 'Garmin Connect ist nicht installiert.' : 'Garmin Connect antwortet nicht' + (g.error ? ' (' + esc(g.error) + ')' : '') + '.';
+  else if (!g.devices || !g.devices.length) t = 'Keine Uhr verbunden (Bluetooth / Garmin Connect prüfen).';
+  else if (!g.installed) t = esc(g.devices[0]) + ' verbunden, Eisenbuch-App auf der Uhr fehlt noch.';
+  else t = esc(g.devices[0]) + ': Uhr-App installiert' + (Nat.garminLive() ? ', aktiv' : '') + '.';
+  return '<div class="row" style="margin-top:12px"><span><b>Garmin-Uhr-App</b><br><small>' + t + ' Satz bestätigen und Pausen-Timer direkt auf der Uhr.</small></span>' + (g.installed ? '<button class="chip" data-act="g-open">Auf Uhr öffnen</button>' : '<button class="chip" data-act="g-refresh">Prüfen</button>') + '</div>';
+}
 /* Benachrichtigungs-Status mit direkter Abhilfe */
 function notifRow() {
   const st = S.nstat;
@@ -302,7 +312,7 @@ function vSettings() {
     '<div class="row"><span><b>Tagesform-Check</b><br><small>3 Fragen vor dem Start, passt Sätze und Last an</small></span><button class="chip" data-act="rd-tog" aria-pressed="' + (p.readyCheck !== false) + '">' + (p.readyCheck !== false ? 'An' : 'Aus') + '</button></div>' +
     '<div class="row" style="margin-top:12px"><span><b>Volumensteuerung</b><br><small>±1 Satz je Muskel nach Fortschritt, wöchentlich</small></span><button class="chip" data-act="vol-tog" aria-pressed="' + (p.volAuto !== false) + '">' + (p.volAuto !== false ? 'An' : 'Aus') + '</button></div>' +
     ('<div class="row" style="margin-top:12px"><span><b>Smartwatch-Modus</b><br><small>Uhr vibriert am Pausenende und zeigt Gewicht × Wdh. „✓ Geschafft“ auf der Uhr trägt den Satz ein und startet die nächste Pause, ohne Handy</small></span><button class="chip" data-act="watch-tog" aria-pressed="' + (p.watch !== false) + '">' + (p.watch !== false ? 'An' : 'Aus') + '</button></div>' +
-      notifRow() +
+      garminRow() + notifRow() +
       '<div class="row" style="margin-top:12px"><span><b>Health Connect</b><br><small>Schlaf und Nachtpuls der Uhr (Garmin Connect → Health Connect) im Tagesform-Check</small></span><button class="chip" data-act="hc-tog" aria-pressed="' + !!p.hc + '">' + (p.hc ? 'An' : 'Aus') + '</button></div>' +
       (p.watch !== false ? '<details style="margin-top:8px"><summary>Garmin einrichten</summary><div class="stack" style="padding:6px 0"><p>1. Hier in Eisenbuch Benachrichtigungen erlauben (Zeile oben). Ohne das kommt weder aufs Handy noch auf die Uhr etwas.</p><p>2. Garmin Connect: Smart Notifications für die Venu 3 an. Unter Android spiegelt Garmin standardmäßig alle Apps, ein eigener Schalter für Eisenbuch ist nicht nötig.</p><p>3. „Während Aktivität“ zählt nur, wenn du auf der Uhr eine Aktivität (z. B. Krafttraining) startest. Ohne Uhr-Aktivität gilt „Nicht während Aktivität“.</p><p>4. Mit „Test an Uhr senden“ prüfen: Handy sperren, nach 5 s vibriert die Uhr. Auf der Uhr nach oben wischen und <b>✓ Geschafft</b> wählen.</p><p>5. Für Health Connect: Garmin Connect → Einstellungen → Verbundene Apps → Health Connect, Schlaf und Herzfrequenz freigeben.</p></div></details>' : '')) + '</div>' +
     '<div class="card"><h2>Dein Studio</h2><p class="hint">Kleinster Gewichtsschritt je Gerät. Die App rundet alle Vorgaben darauf.</p>' +
