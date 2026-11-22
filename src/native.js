@@ -32,6 +32,24 @@ const Nat = {
     this.P.APP.addListener('backButton', () => onBack());
     this.P.APP.addListener('appStateChange', st => { if (st.isActive) this.fg(); else this.bg(); });
   },
+  /* Benachrichtigungs-Status (Android 13+: ohne Erlaubnis kommt gar nichts, auch nicht auf der Uhr) */
+  async notifStatus() {
+    if (!NATIVE || !this.P) return null;
+    let st = {enabled:false, app:false, channel:true, exact:true};
+    try { if (this.P.W) st = await this.P.W.status(); else { const r = await this.P.LN.checkPermissions(); st.enabled = st.app = r.display === 'granted'; } } catch (e) {}
+    const ch = !S.nstat || S.nstat.enabled !== st.enabled || S.nstat.exact !== st.exact; S.nstat = st;
+    if (ch && S.tab === 'more' && S.ui.more === 'set') render();
+    return st;
+  },
+  async ensureNotif() { const ok = await this.perm(); await this.notifStatus(); return ok && S.nstat && S.nstat.enabled; },
+  openNotifSettings() { if (this.P && this.P.W) this.P.W.openSettings().catch(() => {}); },
+  /* Test: in 5 s eine Satz-Benachrichtigung wie im Training, mit „✓ Geschafft“ */
+  async watchTest() {
+    if (!NATIVE || !this.P || !this.P.W) return false;
+    if (!(await this.ensureNotif())) return false;
+    await this.P.W.arm({queue:[{i:-1, s:-1, title:'Eisenbuch-Test · Satz 1/3', body:'60 kg × 8 Wdh. · auf der Uhr nach oben wischen: ✓ Geschafft', rest:0}], at:Date.now() + 5000});
+    return true;
+  },
   async perm() {
     if (!NATIVE || !this.P) return false;
     try { let s = await this.P.LN.checkPermissions(); if (s.display !== 'granted') s = await this.P.LN.requestPermissions(); return s.display === 'granted'; } catch (e) { return false; }
@@ -60,7 +78,9 @@ const Nat = {
   async watchSync() {
     if (!NATIVE || !this.P || !this.P.W) return 0;
     let r; try { r = await this.P.W.sync(); } catch (e) { return 0; }
-    const n = watchApply((r && r.done) || []);
+    const evs = (r && r.done) || [];
+    if (evs.some(e => e.i < 0)) { toast('Test angekommen: „✓ Geschafft“ hat funktioniert.'); Nat.vib(120); }
+    const n = watchApply(evs.filter(e => e.i >= 0));
     if (n) this.restSchedule(document.hidden);
     return n;
   },
@@ -69,7 +89,7 @@ const Nat = {
   async fg() {
     await this.watchSync();
     if (S.rest && Date.now() >= S.rest.end) S.rest = null; /* Signal kam schon als Benachrichtigung */
-    renderRest(); this.restSchedule(false); this.reschedule(); this.healthRefresh();
+    renderRest(); this.restSchedule(false); this.reschedule(); this.healthRefresh(); this.notifStatus();
   },
   /* ----- Health Connect: Schlaf und Nachtpuls (z. B. Garmin über Garmin Connect) ----- */
   async healthStatus() { if (!NATIVE || !this.P || !this.P.H) return {available:false}; try { return await this.P.H.status(); } catch (e) { return {available:false}; } },

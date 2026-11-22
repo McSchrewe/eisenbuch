@@ -1,5 +1,14 @@
 package de.eisenbuch.app;
 
+import android.app.AlarmManager;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
+import androidx.core.app.NotificationManagerCompat;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -46,6 +55,39 @@ public class WatchPlugin extends Plugin {
         r.put("done", WatchLoop.takeDone(getContext()));
         r.put("next", WatchLoop.nextAt(getContext()));
         call.resolve(r);
+    }
+
+    /** Dürfen Benachrichtigungen angezeigt werden? (App-Schalter, Uhr-Kanal, exakte Alarme) */
+    @PluginMethod
+    public void status(PluginCall call) {
+        Context c = getContext();
+        boolean app = NotificationManagerCompat.from(c).areNotificationsEnabled(), ch = true, exact = true;
+        if (Build.VERSION.SDK_INT >= 26) {
+            NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+            NotificationChannel n = nm == null ? null : nm.getNotificationChannel(WatchLoop.CH);
+            if (n != null && n.getImportance() == NotificationManager.IMPORTANCE_NONE) ch = false;
+        }
+        if (Build.VERSION.SDK_INT >= 31) {
+            AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+            exact = am != null && am.canScheduleExactAlarms();
+        }
+        JSObject r = new JSObject();
+        r.put("enabled", app && ch);
+        r.put("app", app);
+        r.put("channel", ch);
+        r.put("exact", exact);
+        call.resolve(r);
+    }
+
+    /** Android-Einstellungen für die Benachrichtigungen von Eisenbuch öffnen */
+    @PluginMethod
+    public void openSettings(PluginCall call) {
+        Context c = getContext();
+        Intent i;
+        if (Build.VERSION.SDK_INT >= 26) i = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, c.getPackageName());
+        else i = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + c.getPackageName()));
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try { c.startActivity(i); call.resolve(); } catch (Exception e) { call.reject(e.getMessage()); }
     }
 
     static void emitDone() {

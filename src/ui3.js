@@ -62,6 +62,7 @@ function startWorkout(free, planId, ready) {
   const rsc = ready ? readyScore(ready) : null; if (!free && rsc !== null) applyReady(w.items, rsc);
   S.active = {id:uid('s'), start:Date.now(), date:todayStr(), planId:w.planId, tplId:w.tplId, name:w.name, n:free || over || w.pr.prep ? null : p.block.n, prep:!!w.pr.prep, ready:ready ? {a:ready, sc:rsc} : null, pr:w.pr, block:p.block.no, items:w.items.map(itemFromPlan)};
   S.ui.woMin = false; S.ui.wf = null; S.ui.ws = null; saveActive(); render(); wake();
+  if (NATIVE && p.watch !== false) Nat.ensureNotif().then(ok => { if (!ok) toast('Benachrichtigungen sind blockiert: keine Pausen-Signale auf Handy und Uhr. Mehr → Einstellungen.'); });
   if (free) openPicker({mode:'wadd'});
 }
 function finishWorkout() {
@@ -318,6 +319,12 @@ const ACT = {
     if (!r.granted) { toast('Keine Freigabe erteilt. In Health Connect → App-Berechtigungen → Eisenbuch erlauben.'); return; }
     S.p.hc = true; saveProfile(); await Nat.healthRefresh(true); render();
     const hs = hcSummary(); toast(hs && !hs.old ? 'Verbunden: ' + fmtH(hs.sleepH) + ' Schlaf letzte Nacht.' : 'Verbunden. Noch keine Schlafdaten: in Garmin Connect Health Connect freigeben.');
+  },
+  'n-allow'() { Nat.ensureNotif().then(ok => { if (!ok) Nat.openNotifSettings(); else toast('Benachrichtigungen erlaubt.'); }); },
+  'n-settings'() { Nat.openNotifSettings(); },
+  'n-test'() {
+    if (S.active) { toast('Test geht nur ohne laufendes Training.'); return; }
+    Nat.watchTest().then(ok => toast(ok ? 'Test kommt in 5 s. Handy sperren und auf die Uhr schauen.' : 'Benachrichtigungen sind blockiert. Erst erlauben.'));
   },
   'watch-tog'() { S.p.watch = S.p.watch === false; saveProfile(); render(); toast(S.p.watch !== false ? 'Smartwatch-Modus an: Pausenende kommt immer als Benachrichtigung.' : 'Smartwatch-Modus aus.'); },
   'gym-inc'(v) { const [k, x] = v.split(':'); S.p.gym = S.p.gym || {}; S.p.gym[k] = +x; saveProfile(); render(); },
@@ -668,5 +675,7 @@ if (NATIVE) {
   /* Falls der WebView-Speicher leer ist (z. B. nach Wiederherstellung), Sicherungsdatei laden */
   if (!S.p) Nat.loadBackup().then(j => { if (j && j.p) { S.p = normProfile(j.p); S.sessions = j.sessions || []; S.runs = j.runs || []; S.grip = j.grip || []; S.body = j.body || []; lsSave(); render(); toast('Daten aus der Sicherungsdatei wiederhergestellt.'); } Nat.reschedule(); });
   else Nat.reschedule();
-  Nat.watchSync(); Nat.healthRefresh(); /* auf der Uhr bestätigte Sätze, Schlaf/Puls aus Health Connect */
+  Nat.watchSync(); Nat.healthRefresh();
+  /* Einmalig nach dem Update fragen: ohne Erlaubnis keine Pausen-Signale, auch nicht auf der Uhr */
+  if (S.p && S.p.done && S.p.watch !== false && !S.p.notifAsked) setTimeout(() => { S.p.notifAsked = true; saveProfile(); Nat.ensureNotif(); }, 1500); else Nat.notifStatus(); /* auf der Uhr bestätigte Sätze, Schlaf/Puls aus Health Connect */
 } else Cloud.init().then(c => { if (c) mergeCloud(c); cloudBadge(); });
