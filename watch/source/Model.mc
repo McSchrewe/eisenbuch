@@ -142,9 +142,7 @@ class Model {
         doneKeys[key(h["i"], h["s"])] = ts;
         queue = queue.slice(1, null);
         if (session == null) {
-            startSession();
-        } else if (session.isRecording()) {
-            session.addLap(); // jeder Satz eine Runde in Garmin Connect
+            startSession(); // keine Runden pro Satz: die Uhr würde jede Runde ansagen
         }
         var r = h["r"];
         if (queue.size() == 0) {

@@ -86,8 +86,6 @@ class MainView extends WatchUi.View {
             center(dc, w / 2, h * 0.67, Graphics.FONT_TINY, Graphics.COLOR_WHITE, fit(dc, str(e["n"]) + " · " + str(e["l"]), Graphics.FONT_TINY, w * 0.80));
             center(dc, w / 2, h * 0.74, Graphics.FONT_TINY, GREEN, fit(dc, str(e["w"]), Graphics.FONT_TINY, w * 0.70));
         }
-        center(dc, w * 0.32, h * 0.86, Graphics.FONT_XTINY, GREY, "-15 s");
-        center(dc, w * 0.68, h * 0.86, Graphics.FONT_XTINY, GREY, "+15 s");
     }
 
     function str(x) {
@@ -112,7 +110,7 @@ class MainView extends WatchUi.View {
     }
 }
 
-// Eingaben: Tippen auf OK bzw. START bestätigt den Satz. In der Pause: unten links -15 s, unten rechts +15 s, START überspringt.
+// Eingaben: Tippen auf OK bzw. START bestätigt den Satz. In der Pause überspringt START die Pause.
 class MainDelegate extends WatchUi.BehaviorDelegate {
     var m;
 
@@ -123,18 +121,10 @@ class MainDelegate extends WatchUi.BehaviorDelegate {
 
     function onTap(evt) {
         var c = evt.getCoordinates();
-        var w = System.getDeviceSettings().screenWidth, h = System.getDeviceSettings().screenHeight;
+        var h = System.getDeviceSettings().screenHeight;
         if (m.state == :set) {
             if (c[1] > h * 0.60) {
                 m.confirm();
-            }
-        } else if (m.state == :rest) {
-            if (c[1] > h * 0.78) {
-                if (c[0] < w * 0.5) {
-                    m.addRest(-15);
-                } else {
-                    m.addRest(15);
-                }
             }
         }
         return true;
