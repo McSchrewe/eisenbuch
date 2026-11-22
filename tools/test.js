@@ -124,3 +124,26 @@ console.log('OK: Saisonplan (Blockfolge, Verschiebung, Aufholen, Power-Phase)');
   assert.strictEqual(T.nextPlan(p, [{date:'2026-10-01', planId:pl[2].id}]).plan.id, pl[0].id, 'nach C: A');
 }
 console.log('OK: Plan-Reihenfolge nach tatsächlichen Einheiten');
+
+/* Nippard-Modelle: Formel 1RM × %, Wellen, Topsatz + Back-off */
+{
+  const mk = model => { const p = T.defaultProfile(); Object.assign(p, {model, split:'upperlower', days:[0, 1, 3, 4], done:true}); p.e1 = {kniebeuge:100, bankdruecken:90, kreuzheben:125, ohp:60, 'lh-rudern':80}; T.ensurePrograms(p); return p; };
+  const p = mk('nul'), d = 4, find = (w, id) => w.items.find(x => x.exId === id);
+  assert.strictEqual(T.blockSessions(p), 36, 'U/L: 9 Wochen × 4');
+  let w1 = null, w9 = null, dl1 = null, dl9 = null;
+  for (const pl of T.activeProgram(p).plans) {
+    const a = T.buildWorkout(p, [], 0, pl.id), b = T.buildWorkout(p, [], 8 * d, pl.id);
+    if (a.items[0].exId === 'kniebeuge') { w1 = a.items[0]; w9 = b.items[0]; }
+    if (find(a, 'kreuzheben')) { dl1 = find(a, 'kreuzheben'); dl9 = find(b, 'kreuzheben'); }
+  }
+  if (w1) { assert.strictEqual(w1.kg, 75, 'Kniebeuge Woche 1: 100 × 75 %'); assert.strictEqual(w1.sets + '×' + w1.reps, '4×4'); assert.strictEqual(w9.kg, 80, 'Woche 9: 80 %'); assert.strictEqual(w9.reps, 6); }
+  if (dl1 && dl1.slot !== 0) { assert.strictEqual(dl1.sets, 2); assert.strictEqual(dl1.kg, 100, 'Kreuzheben 125 × 80 % = 100'); assert.strictEqual(dl9.sets, 4); assert.strictEqual(dl9.kg, 107.5, '125 × 85 % = 106,25 → 107,5 (MROUND 2,5)'); }
+  assert(w1 || dl1, 'U/L-Test fand keine Kniebeuge/Kreuzheben');
+  const acc = T.buildWorkout(p, [], 1, T.activeProgram(p).plans[0].id).items.find(x => x.mode === 'dp');
+  if (acc) assert(/RPE 7/.test(acc.desc), 'Nebenübung Woche 1: RPE 7');
+  const q = mk('ness'), wq = T.buildWorkout(q, [], 0, T.activeProgram(q).plans[0].id), m = wq.items.find(x => x.spec);
+  assert(m && m.spec.length === 2 && m.spec[0].top && m.spec[1].reps === 9, 'Essentials: Topsatz + 1 Back-off');
+  assert(wq.items.filter(x => x.mode === 'dp').every(x => x.sets <= 2), 'Essentials: max. 2 Sätze Nebenübungen');
+  assert(wq.items.length <= 8, 'Essentials: kurz');
+}
+console.log('OK: Nippard (Formel, Wellen, Topsatz + Back-off)');

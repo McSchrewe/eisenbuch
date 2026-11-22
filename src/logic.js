@@ -242,6 +242,17 @@ const MODELS = {
 };
 MODELS.season = {name:'Saisonplan Wakeboard', weeks:6, tag:'Kraft & Power zum Saisonstart', season:true,
   desc:'Blöcke rückwärts vom Saisonstart: Grundlage, Maximalkraft mit Topsatz, dann Power & Kraftausdauer und eine Woche Tapering. Gezählt werden deine tatsächlich gemachten Einheiten: Fällt ein Training aus, verschiebt sich der Block. Liegst du 2 Wochen oder mehr zurück, überspringt die App eine Arbeitswoche, und spätere Blöcke werden kürzer geplant, damit du rechtzeitig zum Saisonstart in Form bist.', wk:[]};
+/* Optionale Modelle nach Jeff Nippard (Methodik, nicht die Übungsauswahl: deine Pläne bleiben).
+   Upper/Lower 4×: 9 Wochen in 3 Wellen à 3 Wochen. Hauptübungen nach %1RM (Last = 1RM × %, auf die kleinste Scheibe gerundet,
+   wie MROUND im Original), pro Welle +2,5 %, innerhalb der Welle +1 Wdh. bzw. +1 Satz. Nebenübungen nach RPE 7 → 8 → 9. Kein Deload.
+   Essentials 3×: 4-Wochen-Block, wenig Sätze nah am Versagen: Topsatz 4–6 Wdh. @ RPE 8–9 plus ein Back-off-Satz 8–10,
+   Nebenübungen 1–2 Sätze @ RPE 9–10, Fortschritt über Wdh. oder Gewicht („Beat the logbook“). */
+MODELS.nul = {name:'Nippard Upper/Lower', weeks:9, tag:'Option: Kraft + Muskelaufbau, 9 Wochen', nip:'ul',
+  desc:'Nach Jeff Nippards Upper/Lower 4×: drei Wellen à 3 Wochen. Erste Übung am Beintag 4 × 4 → 5 → 6 Wdh. bei 75 / 77,5 / 80 %, am Oberkörpertag 4 × 6 → 7 → 8 bei 70 / 72,5 / 75 %, Kreuzheben 2 → 3 → 4 Sätze × 5 bei 80 / 82,5 / 85 %. Weitere Grundübungen 3 × 8 mit der Last aus RPE und 1RM. Nebenübungen steigen innerhalb jeder Welle von RPE 7 auf 9 (3 → 1 Wdh. Reserve). Keine Entlastungswoche; die Tagesform-Abfrage nimmt bei Bedarf Last raus.',
+  wk:[0, 1, 2].flatMap(b => [0, 1, 2].map(k => ({l:'Welle ' + (b + 1) + ' · RPE ' + (7 + k), pct:Math.round((0.75 + 0.025 * b) * 1000) / 1000, reps:4 + k, sets:4, rir:3 - k, nip:'ul', b, k})))};
+MODELS.ness = {name:'Nippard Essentials', weeks:4, tag:'Option: ca. 45 min, wenige harte Sätze', nip:'ess',
+  desc:'Nach Jeff Nippards Essentials 3×: wenig Volumen, hohe Intensität. Grundübungen: 1 Topsatz × 4–6 bei RPE 8–9 (ca. 82,5 %), danach 1 Back-off-Satz × 8–10 (ca. 72,5 %). Nebenübungen 1–2 Sätze bis RPE 9–10. Ziel jede Woche: eine Wiederholung oder eine Gewichtsstufe mehr. Gut, wenn wenig Zeit ist.',
+  wk:[0, 1, 2, 3].map(() => ({l:'Topsatz + Back-off', pct:0.825, reps:5, sets:2, rir:1, nip:'ess'}))};
 const PHASES = {prep:'Einstieg', base:'Grundlage', max:'Maximalkraft', power:'Power & Kraftausdauer', taper:'Tapering'};
 const rp = x => Math.round(x * 80) / 80; /* auf 1,25 % runden */
 function modelOf(p) { if (p.model !== 'season') return MODELS[p.model] || MODELS.linear; const wk = (p.block && p.block.wk) || []; return {...MODELS.season, wk, weeks:wk.length || 6}; }
@@ -324,7 +335,7 @@ function prescribe(p, n) {
   const d = p.days.length, M = modelOf(p), wi = Math.floor(n / d), di = n % d;
   if (wi >= M.weeks) return null;
   const w = M.wk[wi];
-  if (p.model !== 'dup') return {week:wi+1, dayIdx:di, label:w.l, pct:w.pct, reps:w.reps, sets:w.sets, deload:!!w.deload, top:w.top || null, back:w.back || null, phase:w.phase || null};
+  if (p.model !== 'dup') return {week:wi+1, dayIdx:di, label:w.l, pct:w.pct, reps:w.reps, sets:w.sets, deload:!!w.deload, top:w.top || null, back:w.back || null, phase:w.phase || null, nip:w.nip || null, b:w.b || 0, k:w.k || 0, rir:w.rir == null ? null : w.rir};
   if (w.deload) return {week:wi+1, dayIdx:di, label:'Deload', pct:w.pct, reps:w.reps, sets:w.sets, deload:true};
   const t = DUP_DAYS[d][di], x = w[t];
   return {week:wi+1, dayIdx:di, label:DUP_NAMES[t], pct:x.pct, reps:x.reps, sets:x.sets, deload:false};
@@ -479,6 +490,8 @@ function exPlan(p, id, slot, pr, sessions) {
   if (e.eq === 'KG') {
     if (id === 'repeaters') { const r = [4, 6], s = pr.prep ? {kg:0, reps:4} : dpSuggest(last, r[0], r[1], 2.5), n = pr.phase === 'power' ? 4 : sets;
       return {...base, mode:'bw', sets:n, reps:s.reps, kg:s.kg || 0, rng:r, unit:'Zyklen', rest:180, desc:n + ' Serien × 4–6 Zyklen (7 s hängen, 3 s Pause)'}; }
+    if (pr.nip && !pr.prep) { const r = bwRange(e), s = dpSuggest(last, r[0], r[1], 2.5), n = pr.nip === 'ess' ? 2 : 3;
+      return {...base, mode:'bw', sets:n, reps:s.reps, kg:s.kg || 0, rng:r, desc:n + ' Sätze × ' + r[0] + '–' + r[1] + ' Wdh. · ' + nipRpe(pr)}; }
     const r = pr.phase === 'max' && e.c ? [3, 6] : bwRange(e), s = pr.prep ? {kg:0, reps:r[0]} : dpSuggest(last, r[0], r[1], 2.5);
     return {...base, mode:'bw', sets:pr.phase === 'max' && e.c ? 4 : sets, reps:s.reps, kg:s.kg || 0, rng:r, desc:(pr.phase === 'max' && e.c ? 4 : sets) + ' Sätze × ' + r[0] + '–' + r[1] + ' Wdh.' + (pr.phase === 'max' && e.c ? ' mit Zusatzgewicht' : '')};
   }
@@ -486,6 +499,7 @@ function exPlan(p, id, slot, pr, sessions) {
   if (e1) {
     const adj = (p.adj && p.adj[id]) || 0;
     const kg = Math.max(minKg(e), roundTo(e1 * pr.pct, inc) + adj);
+    if (pr.nip && !pr.prep) return nipPct(p, id, slot, pr, base, e1, adj, inc);
     const n = slot < 2 ? pr.sets : Math.min(pr.sets, 3);
     /* Topsatz: allein trainierbar statt 1RM-Test. 3 schwere Wiederholungen kalibrieren das 1RM, danach Back-off-Sätze */
     if (pr.top && e.main && n >= 2) {
@@ -501,8 +515,33 @@ function exPlan(p, id, slot, pr, sessions) {
   let s = dpSuggest(last, rng[0], rng[1], inc);
   if (pr.prep && last) { const top = Math.max(...workSets(last.x).map(q => q.kg || 0)); s = {kg:Math.max(0, roundTo(top * pr.dp, inc)), reps:rng[0]}; } /* Einstieg: unter dem letzten Arbeitsgewicht */
   else if (pr.deload && last) { const top = Math.max(...workSets(last.x).map(q => q.kg || 0)); s = {kg:Math.max(0, roundTo(top * 0.8, inc)), reps:rng[0]}; } /* Deload: keine Steigerung, ca. 80 % */
+  if (pr.nip && !pr.prep) { const n = pr.nip === 'ess' ? (e.c ? 2 : 1) : 3;
+    return {...base, mode:'dp', sets:n, reps:s.reps, kg:s.kg, rng, first:!last, desc:n + (n > 1 ? ' Sätze' : ' Satz') + ' × ' + rng[0] + '–' + rng[1] + ' Wdh. · ' + nipRpe(pr) + (pr.nip === 'ess' && !e.c ? ', letzter Satz gern als Dropset (−50 %)' : '')}; }
   return {...base, mode:'dp', sets, reps:s.reps, kg:s.kg, rng, first:!last,
     desc:sets + ' Sätze × ' + rng[0] + '–' + rng[1] + ' Wdh.'};
+}
+/* Nippard: Ziel-Anstrengung als RPE (10 = Versagen, 9 = 1 Wdh. Reserve) */
+function nipRpe(pr) { return pr.nip === 'ess' ? 'RPE 9–10' : 'RPE ' + (10 - pr.rir) + ' (' + pr.rir + ' Wdh. Reserve)'; }
+/* Nippard: Grundübungen mit 1RM. Last = 1RM × %, gerundet auf die kleinste Steigerung (entspricht MROUND im Original) */
+function nipPct(p, id, slot, pr, base, e1, adj, inc) {
+  const e = EX[id], kgOf = pct => Math.max(minKg(e), roundTo(e1 * pct * (pr.re ? 0.9 : 1), inc) + adj) /* Wiedereinstieg nach 14+ Tagen: 10 % leichter */, pc = x => fmt(Math.round(x * 1000) / 10) + ' %';
+  if (pr.nip === 'ess') {
+    if (slot === 0) {
+      const tk = kgOf(0.825), bk = kgOf(0.725);
+      return {...base, mode:'pct', sets:2, reps:5, pct:0.825, kg:tk, e1, adj, spec:[{kg:tk, reps:5, top:true}, {kg:bk, reps:9}],
+        desc:'Topsatz 4–6 Wdh. @ RPE 8–9 (' + pc(0.825) + '), dann 1 Back-off × 8–10 (' + pc(0.725) + ')'};
+    }
+    return {...base, mode:'pct', sets:2, reps:8, pct:0.75, kg:kgOf(0.75), e1, adj, desc:'2 Sätze × 8–10 Wdh. @ RPE 8–9 (' + pc(0.75) + ')'};
+  }
+  /* Upper/Lower: Welle b (0–2), Woche k (0–2) in der Welle */
+  const b = pr.b || 0, k = pr.k || 0;
+  let sets, reps, pct, how;
+  if (id === 'kreuzheben') { sets = 2 + k; reps = 5; pct = 0.80 + 0.025 * b; how = 'Satz-Welle'; }
+  else if (slot === 0 && e.l) { sets = 4; reps = 4 + k; pct = 0.75 + 0.025 * b; how = 'schwere Welle'; }
+  else if (slot === 0) { sets = 4; reps = 6 + k; pct = 0.70 + 0.025 * b; how = 'Wdh.-Welle'; }
+  else { sets = 3; reps = 8; pct = Math.round(1 / (1 + (reps + pr.rir) / 30) * 80) / 80; how = 'RPE ' + (10 - pr.rir) + ', aus 1RM gerechnet'; } /* RPE → %: Epley mit Wdh. + Reserve */
+  pct = Math.round(pct * 1000) / 1000;
+  return {...base, mode:'pct', sets, reps, pct, kg:kgOf(pct), e1, adj, desc:sets + ' Sätze × ' + reps + ' Wdh. @ ' + pc(pct) + ' · ' + how};
 }
 function templateIds(p, tid) { return TPL[tid].ex.map((id, i) => (p.swaps && p.swaps[tid + ':' + i]) || id); }
 /* Ein Training aus einem Plan bauen. Ohne planId wählt die App automatisch (siehe nextPlan). */
@@ -517,6 +556,7 @@ function buildWorkout(p, sessions, n, planId, opt) {
   if (!plan) return {planId:null, tplId:null, name:'Freies Training', pr, items:[], est:5};
   let lst = plan.items.map(it => ({id:it.exId, ss:!!it.ss}));
   if (pr.deload && lst.length > 3) lst = lst.slice(0, Math.max(3, Math.ceil(lst.length * 0.7)));
+  if (pr.nip === 'ess' && lst.length > 7) lst = lst.filter((x, i) => i < 7 || x.id === 'handle-hold'); /* Essentials: ca. 45 min */
   if (pr.phase === 'max' && lst.length > 6) lst = lst.slice(0, 6); /* Maximalkraft: weniger Übungen, dafür schwerer */
   if (pr.phase === 'power') { /* Kontrast: Sprung direkt nach der schweren Grundübung, ohne Pause dazwischen */
     lst = lst.filter((x, i) => i < 7 || x.id === 'handle-hold'); /* weniger Volumen, Handle-Hold bleibt */

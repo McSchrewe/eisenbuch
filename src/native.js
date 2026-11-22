@@ -12,7 +12,12 @@ const Nat = {
     const reg = (window.capacitorExports && window.capacitorExports.registerPlugin) || (window.Capacitor && window.Capacitor.registerPlugin);
     if (!reg) throw new Error('registerPlugin fehlt');
     const R = n => reg(n);
-    this.P = {LN:R('LocalNotifications'), FS:R('Filesystem'), SH:R('Share'), HA:R('Haptics'), APP:R('App')};
+    this.P = {LN:R('LocalNotifications'), FS:R('Filesystem'), SH:R('Share'), HA:R('Haptics'), APP:R('App'), W:R('Watch'), H:R('Health')};
+    /* „✓ Geschafft“ auf Uhr oder Handy, während die App offen ist: sofort übernehmen */
+    try { this.P.W.addListener('done', () => this.watchSync()); } catch (e) { this.P.W = null; }
+    /* Starttest-Zeilen für den Emulator-Test in GitHub Actions */
+    if (this.P.W) this.P.W.sync().then(() => console.log('EB_WATCH_OK')).catch(e => console.error('EB_WATCH_ERR ' + (e && e.message)));
+    this.P.H.status().then(r => console.log('EB_HEALTH ' + JSON.stringify(r))).catch(e => console.error('EB_HEALTH_ERR ' + (e && e.message)));
     const LN = this.P.LN;
     LN.createChannel({id:'rest', name:'Pausen-Timer', description:'Signal am Ende der Satzpause', importance:5, visibility:1, vibration:true}).catch(() => {});
     LN.createChannel({id:'remind', name:'Trainings-Erinnerungen', description:'Erinnerung an geplante Einheiten und Griff-Tests', importance:4, visibility:1, vibration:true}).catch(() => {});
@@ -35,22 +40,47 @@ const Nat = {
      Mit Uhr-Modus immer, sonst nur wenn die App im Hintergrund ist. */
   restSchedule(force) {
     if (!NATIVE || !this.P) return;
+    if (!this.P.W) return this.restScheduleLN(force);
+    const watchOn = !S.p || S.p.watch !== false, restOn = !!(S.rest && S.active && S.rest.end > Date.now() + 1500);
+    /* Vordergrund ohne Pause: nichts auf der Uhr. Ohne Uhr-Modus nur im Hintergrund. */
+    if (!S.active || (!force && (!watchOn || !restOn)) || (force && !restOn && !watchOn)) { this.P.W.disarm().catch(() => {}); return; }
+    const q = watchQueue(S.active, S.ui.wf);
+    if (!q.length) { this.P.W.disarm().catch(() => {}); return; }
+    this.P.W.arm({queue:q, at:restOn ? S.rest.end : 0}).catch(() => {});
+  },
+  /* Rückfall ohne Uhr-Plugin: einfache Benachrichtigung am Pausenende */
+  restScheduleLN(force) {
     this.P.LN.cancel({notifications:[{id:9001}]}).catch(() => {});
     if (!S.rest || !S.active || S.rest.end <= Date.now() + 1500) return;
     if (!force && S.p.watch === false) return;
-    const a = S.active, cand = S.ui.wf != null ? [S.ui.wf] : []; a.items.forEach((x, k) => cand.push(k));
-    let i = -1, j = -1; for (const k of cand) { const jj = a.items[k] ? a.items[k].sets.findIndex(q => !q.done) : -1; if (jj >= 0) { i = k; j = jj; break; } }
-    if (i < 0) return;
-    const it = a.items[i], e = EX[it.exId], st = it.sets[j], nWork = it.sets.filter(q => !q.warm).length, idx = it.sets.slice(0, j + 1).filter(q => !q.warm).length;
-    const what = (st.kg ? fmt(st.kg) + ' kg × ' : '') + (st.reps || '') + (it.plan.mode === 'time' ? ' s' : ' Wdh.');
-    this.P.LN.schedule({notifications:[{id:9001, title:'Pause vorbei · ' + e.name, body:(st.warm ? 'Aufwärmsatz' : (st.top ? 'Topsatz ' : 'Satz ') + idx + '/' + nWork) + ': ' + what, channelId:'rest', actionTypeId:'set', schedule:{at:new Date(S.rest.end), allowWhileIdle:true}, extra:{go:'train', i, s:j}}]}).catch(() => {});
+    const q = watchQueue(S.active, S.ui.wf); if (!q.length) return;
+    this.P.LN.schedule({notifications:[{id:9001, title:'Pause vorbei · ' + q[0].title, body:q[0].body, channelId:'rest', actionTypeId:'set', schedule:{at:new Date(S.rest.end), allowWhileIdle:true}, extra:{go:'train', i:q[0].i, s:q[0].s}}]}).catch(() => {});
+  },
+  /* Auf der Uhr bestätigte Sätze abholen und eintragen */
+  async watchSync() {
+    if (!NATIVE || !this.P || !this.P.W) return 0;
+    let r; try { r = await this.P.W.sync(); } catch (e) { return 0; }
+    const n = watchApply((r && r.done) || []);
+    if (n) this.restSchedule(document.hidden);
+    return n;
   },
   /* App geht in den Hintergrund oder Bildschirm wird gesperrt */
   bg() { this.flush(); this.restSchedule(true); },
-  fg() {
-    if (S.p && S.p.watch === false) this.P.LN.cancel({notifications:[{id:9001}]}).catch(() => {});
+  async fg() {
+    await this.watchSync();
     if (S.rest && Date.now() >= S.rest.end) S.rest = null; /* Signal kam schon als Benachrichtigung */
-    renderRest(); this.reschedule();
+    renderRest(); this.restSchedule(false); this.reschedule(); this.healthRefresh();
+  },
+  /* ----- Health Connect: Schlaf und Nachtpuls (z. B. Garmin über Garmin Connect) ----- */
+  async healthStatus() { if (!NATIVE || !this.P || !this.P.H) return {available:false}; try { return await this.P.H.status(); } catch (e) { return {available:false}; } },
+  async healthConnect() {
+    if (!NATIVE || !this.P || !this.P.H) return {available:false, granted:false};
+    try { const r = await this.P.H.request(); if (r.granted) await this.healthRefresh(true); return r; } catch (e) { return {available:true, granted:false}; }
+  },
+  async healthRefresh(force) {
+    if (!NATIVE || !this.P || !this.P.H || !S.p || !S.p.hc) return null;
+    if (!force && S.hc && Date.now() - S.hc.t < 30 * 60000) return S.hc;
+    try { const r = await this.P.H.nights({days:15}); S.hc = {t:Date.now(), nights:r.nights || [], resting:r.resting || []}; if (S.ui.sheet && S.ui.sheet.t === 'ready') renderSheet(); return S.hc; } catch (e) { return null; }
   },
   /* Sofort-Benachrichtigung (z. B. Wake-Ziele); Smartwatches spiegeln sie */
   notifyNow(id, title, text) {
@@ -106,6 +136,61 @@ const Nat = {
     if (list.length) LN.schedule({notifications:list}).catch(() => {});
   }
 };
+/* ----- Uhr-Satzschleife: Reihenfolge der nächsten Sätze (Supersätze abwechselnd) ----- */
+function setKgCarry(it, j) { for (let k = j; k >= 0; k--) if (it.sets[k].kg != null && !it.sets[k].warm) return it.sets[k].kg; return it.sets[j].kg; }
+function restAfterSet(a, i, j) {
+  const it = a.items[i], st = it.sets[j]; if (st.warm) return 60000;
+  const pa = ssPartner(a, i);
+  if (it.ss && pa !== null && a.items[pa].sets.some(q => !q.done && !q.warm)) return 0; /* Supersatz: direkt weiter */
+  return restFor(it) * 1000;
+}
+function watchEntry(a, i, j) {
+  const it = a.items[i], e = EX[it.exId], st = it.sets[j], works = it.sets.filter(q => !q.warm), idx = it.sets.slice(0, j + 1).filter(q => !q.warm).length;
+  const kg = setKgCarry(it, j), unit = it.plan.unit || (it.plan.mode === 'time' ? 's' : 'Wdh.'), m = it.plan.mode;
+  const kgTxt = kg > 0 ? (m === 'bw' || m === 'time' && e.eq === 'KG' ? '+' : '') + fmt(kg) + ' kg × ' : (m === 'pct' || m === 'dp') ? 'Gewicht? × ' : '';
+  return {i, s:j, title:e.name.split(' (')[0] + ' · ' + (st.warm ? 'Aufwärmen' : (st.top ? 'Topsatz ' : 'Satz ') + idx + '/' + works.length),
+    body:kgTxt + (st.reps || it.plan.reps || '') + ' ' + unit, rest:restAfterSet(a, i, j)};
+}
+function watchQueue(a, focus) {
+  const out = []; if (!a) return out;
+  const open = k => a.items[k] && a.items[k].sets.some(q => !q.done);
+  const first = focus != null && open(focus) ? focus : a.items.findIndex((x, k) => open(k));
+  if (first < 0) return out;
+  const order = [first]; for (let k = first + 1; k < a.items.length; k++) order.push(k); for (let k = 0; k < first; k++) order.push(k);
+  const used = new Set();
+  for (const k of order) {
+    if (used.has(k) || !open(k)) continue; used.add(k);
+    const pa = ssPartner(a, k), sk = a.items[k].sets.map((q, j) => j).filter(j => !a.items[k].sets[j].done);
+    if (pa !== null && !used.has(pa) && open(pa)) {
+      used.add(pa); const sp = a.items[pa].sets.map((q, j) => j).filter(j => !a.items[pa].sets[j].done);
+      const [A, B, sa, sb] = k < pa ? [k, pa, sk, sp] : [pa, k, sp, sk];
+      for (let n = 0; n < Math.max(sa.length, sb.length); n++) { if (n < sa.length) out.push(watchEntry(a, A, sa[n])); if (n < sb.length) out.push(watchEntry(a, B, sb[n])); }
+    } else sk.forEach(j => out.push(watchEntry(a, k, j)));
+    if (out.length >= 40) break;
+  }
+  return out;
+}
+/* Von der Uhr bestätigte Sätze eintragen: geplantes Gewicht × Wdh., Pause ab Bestätigungszeit */
+function watchApply(evs) {
+  const a = S.active; if (!a || !evs.length) return 0;
+  let n = 0, last = null; const recs = [];
+  evs.sort((x, y) => x.t - y.t).forEach(ev => {
+    const it = a.items[ev.i], st = it && it.sets[ev.s]; if (!st || st.done) return;
+    if (st.kg == null) st.kg = setKgCarry(it, ev.s);
+    if (!(st.reps > 0)) st.reps = it.plan.reps || 1;
+    st.done = true; st.watch = true; n++; last = ev;
+    for (let k = ev.s + 1; k < it.sets.length; k++) if (!it.sets[k].warm && it.sets[k].kg == null) it.sets[k].kg = st.kg;
+    const nr = liveRecordCheck(it, ev.s); if (nr.length) recs.push([EX[it.exId], nr]);
+  });
+  if (!n) return 0;
+  const end = last.t + restAfterSet(a, last.i, last.s);
+  S.rest = end > Date.now() + 1000 ? {end} : null;
+  if (S.ui.wf != null) { const it = a.items[S.ui.wf], nx = it ? it.sets.findIndex(q => !q.done) : -1; S.ui.ws = nx >= 0 ? nx : null; } /* Übung fertig: Gefühl abfragen, dann weiter */
+  saveActive(); renderWorkout(); renderRest();
+  if (recs.length) showTrophy(recs[0][0], recs[0][1]);
+  toast(n === 1 ? 'Satz von der Uhr übernommen.' : n + ' Sätze von der Uhr übernommen.');
+  return n;
+}
 let reschedT = null;
 function reschedSoon() { clearTimeout(reschedT); reschedT = setTimeout(() => Nat.reschedule(), 2000); }
 /* Android-Zurück-Taste: erst Dialog schließen, dann Training minimieren, dann zu „Heute“ */

@@ -15,6 +15,13 @@ adb exec-out screencap -p > emulator-start.png || true
 # Fensterdaten zur Diagnose (Statusleiste, Insets) als Hinweis ausgeben
 info=$(adb shell dumpsys window windows 2>/dev/null | grep -A12 "de.eisenbuch.app/de.eisenbuch.app.MainActivity" | grep -E "mFrame|mAttrs|fl=|sysuil|insets|ty=" | head -12 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
 echo "::notice title=Fensterdaten::$info"
+sleep 3; adb logcat -d > logcat.txt
+hc=$(grep -o "EB_HEALTH[^\"]*" logcat.txt | head -1)
+echo "::notice title=Uhr/Health-Plugins::$(grep -o 'EB_WATCH_[A-Z]*' logcat.txt | head -1) · $hc"
+if ! grep -q "EB_WATCH_OK" logcat.txt; then
+  echo "::error title=Uhr-Plugin nicht erreichbar::$(grep -E 'EB_WATCH|Capacitor' logcat.txt | tail -10 | sed ':a;N;$!ba;s/\n/%0A/g')"
+  exit 1
+fi
 if grep -q "EB_READY" logcat.txt && ! grep -q "EB_START_ERROR\|EB_NATIVE_INIT" logcat.txt; then
   echo "App startet im Emulator korrekt."
   exit 0

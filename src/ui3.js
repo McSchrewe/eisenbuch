@@ -11,11 +11,35 @@ function unwake() { try { if (wakeLock) wakeLock.release(); } catch (e) {} wakeL
 
 /* Tagesform: Schlaf, Muskelkater, Energie je +1 / 0 / −1. Summe ≤ −2 = leichter Tag (−1 Satz je Übung, −5 % Last) */
 const READY_Q = [['sleep', 'Schlaf', ['Gut (7+ h)', 'Okay', 'Schlecht (< 6 h)']], ['sore', 'Muskelkater', ['Keiner', 'Leicht', 'Stark']], ['energy', 'Energie', ['Fit', 'Normal', 'Platt']]];
-function readyScore(a) { return READY_Q.reduce((s, q) => s + (a[q[0]] === undefined ? 0 : 1 - a[q[0]]), 0); }
+function readyScore(a) { return READY_Q.reduce((s, q) => s + (a[q[0]] === undefined ? 0 : 1 - a[q[0]]), 0) + (a.hr || 0); }
+/* Health Connect (Garmin): letzte Nacht gegen den Median der Nächte davor */
+function hcSummary() {
+  const h = S.hc; if (!S.p || !S.p.hc || !h || !h.nights || !h.nights.length) return null;
+  const ns = h.nights.slice().sort((x, y) => x.end - y.end), last = ns[ns.length - 1];
+  if (Date.now() - last.end > 20 * 3600e3) return {old:true, last};
+  const prev = ns.slice(0, -1).slice(-14), med = a => { if (!a.length) return null; const b = a.slice().sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+  const hrs = prev.filter(n => n.hrLow > 0).map(n => n.hrLow), sl = prev.map(n => n.asleep);
+  const out = {last, sleepH:last.asleep / 60, sleepBase:sl.length >= 3 ? med(sl) / 60 : null, hr:last.hrLow || null, hrBase:hrs.length >= 4 ? Math.round(med(hrs)) : null};
+  out.dHr = out.hr && out.hrBase ? out.hr - out.hrBase : null;
+  return out;
+}
+function fmtH(h) { const m = Math.round(h * 60); return Math.floor(m / 60) + ':' + pad2(m % 60) + ' h'; }
+function hcPrefill(a) {
+  const hs = hcSummary(); if (!hs || hs.old) return;
+  if (a.sleep === undefined) a.sleep = hs.sleepH >= 7 ? 0 : hs.sleepH >= 6 ? 1 : 2;
+  a.hr = hs.dHr !== null && hs.dHr >= 5 ? -1 : 0; /* Nachtpuls deutlich erhöht: zählt wie eine schlechte Antwort */
+}
+function hcLine() {
+  const hs = hcSummary(); if (!hs) return '';
+  if (hs.old) return '<p class="hint" style="margin-top:8px">⌚ Keine Schlafdaten von letzter Nacht in Health Connect. Uhr in Garmin Connect synchronisieren.</p>';
+  return '<div class="card flat" style="margin-top:10px"><p><b>⌚ Uhr (Health Connect)</b></p><p class="sub">' + fmtH(hs.sleepH) + ' Schlaf' + (hs.sleepBase ? ' (Ø ' + fmtH(hs.sleepBase) + ')' : '') +
+    (hs.hr ? ' · Nachtpuls ' + hs.hr + ' bpm' + (hs.hrBase ? ' (Ø ' + hs.hrBase + ' bpm, ' + (hs.dHr >= 0 ? '+' : '−') + Math.abs(hs.dHr) + ')' : '') : '') + '</p>' +
+    (hs.dHr !== null && hs.dHr >= 5 ? '<p class="tag deload" style="display:inline-block;margin-top:6px">Nachtpuls ' + hs.dHr + ' bpm über deinem Schnitt: zählt als −1</p>' : '') + '</div>';
+}
 function readyHTML(sh) {
   const a = sh.a, sc = readyScore(a), all = READY_Q.every(q => a[q[0]] !== undefined);
   return '<h2>Wie fit bist du heute?</h2><p class="sub">Drei kurze Fragen. Bei schlechter Tagesform wird die Einheit leichter, statt dass du dich durchquälst.</p>' +
-    READY_Q.map(q => '<label class="lab">' + q[1] + '</label><div class="chips">' + q[2].map((t, i) => '<button class="chip" data-act="rd-pick" data-v="' + q[0] + ':' + i + '" aria-pressed="' + (a[q[0]] === i) + '">' + t + '</button>').join('') + '</div>').join('') +
+    hcLine() + READY_Q.map(q => '<label class="lab">' + q[1] + '</label><div class="chips">' + q[2].map((t, i) => '<button class="chip" data-act="rd-pick" data-v="' + q[0] + ':' + i + '" aria-pressed="' + (a[q[0]] === i) + '">' + t + '</button>').join('') + '</div>').join('') +
     (all ? '<p class="tag' + (sc <= -2 ? ' deload' : '') + '" style="display:inline-block;margin-top:12px">' + (sc <= -2 ? 'Leichter Tag: 1 Satz weniger je Übung, 5 % weniger Last' : sc >= 3 ? 'Top-Form: Wenn es läuft, ist heute ein Rekordtag' : 'Normaler Tag: Plan wie vorgesehen') + '</p>' : '') +
     '<button class="btn wide" style="margin-top:14px" data-act="rd-go"' + (all ? '' : ' disabled') + '>Training starten</button><button class="btn ghost wide" style="margin-top:8px" data-act="rd-skip">Ohne Check starten</button>';
 }
@@ -283,10 +307,18 @@ const ACT = {
   },
   tab(v) { if (S.tab === v) { S.ui.pv = null; S.ui.more = null; } S.tab = v; S.ui.wipe = false; S.ui.pedit = false; tryLS(() => localStorage.setItem(LS + '.tab', v)); render(); window.scrollTo(0, 0); },
   'wo-start'() { startWorkout(false); },
-  'pl-start'(v) { if (S.active) { S.ui.woMin = false; render(); return; } if (S.p.readyCheck === false) { startWorkout(false, v || undefined); return; } S.ui.sheet = {t:'ready', planId:v || undefined, a:{}}; renderSheet(); },
+  'pl-start'(v) { if (S.active) { S.ui.woMin = false; render(); return; } if (S.p.readyCheck === false) { startWorkout(false, v || undefined); return; } S.ui.sheet = {t:'ready', planId:v || undefined, a:{}}; hcPrefill(S.ui.sheet.a); renderSheet(); Nat.healthRefresh().then(h => { if (h && S.ui.sheet && S.ui.sheet.t === 'ready') { hcPrefill(S.ui.sheet.a); renderSheet(); } }); },
   'rd-pick'(v) { const [k, i] = v.split(':'); S.ui.sheet.a[k] = +i; renderSheet(); },
   'rd-go'() { const sh = S.ui.sheet; S.ui.sheet = null; renderSheet(); startWorkout(false, sh.planId, sh.a); if (readyScore(sh.a) <= -2) toast('Leichter Tag: 1 Satz weniger, 5 % weniger Last.'); },
   'rd-skip'() { const sh = S.ui.sheet; S.ui.sheet = null; renderSheet(); startWorkout(false, sh.planId); },
+  async 'hc-tog'() {
+    if (S.p.hc) { S.p.hc = false; S.hc = null; saveProfile(); render(); toast('Health Connect aus.'); return; }
+    const r = await Nat.healthConnect();
+    if (!r.available) { toast('Health Connect braucht Android 14 oder neuer.'); return; }
+    if (!r.granted) { toast('Keine Freigabe erteilt. In Health Connect → App-Berechtigungen → Eisenbuch erlauben.'); return; }
+    S.p.hc = true; saveProfile(); await Nat.healthRefresh(true); render();
+    const hs = hcSummary(); toast(hs && !hs.old ? 'Verbunden: ' + fmtH(hs.sleepH) + ' Schlaf letzte Nacht.' : 'Verbunden. Noch keine Schlafdaten: in Garmin Connect Health Connect freigeben.');
+  },
   'watch-tog'() { S.p.watch = S.p.watch === false; saveProfile(); render(); toast(S.p.watch !== false ? 'Smartwatch-Modus an: Pausenende kommt immer als Benachrichtigung.' : 'Smartwatch-Modus aus.'); },
   'gym-inc'(v) { const [k, x] = v.split(':'); S.p.gym = S.p.gym || {}; S.p.gym[k] = +x; saveProfile(); render(); },
   'sea-tog'() { S.p.seasonPause = S.p.seasonPause === false; saveProfile(); render(); reschedSoon(); },
@@ -636,4 +668,5 @@ if (NATIVE) {
   /* Falls der WebView-Speicher leer ist (z. B. nach Wiederherstellung), Sicherungsdatei laden */
   if (!S.p) Nat.loadBackup().then(j => { if (j && j.p) { S.p = normProfile(j.p); S.sessions = j.sessions || []; S.runs = j.runs || []; S.grip = j.grip || []; S.body = j.body || []; lsSave(); render(); toast('Daten aus der Sicherungsdatei wiederhergestellt.'); } Nat.reschedule(); });
   else Nat.reschedule();
+  Nat.watchSync(); Nat.healthRefresh(); /* auf der Uhr bestätigte Sätze, Schlaf/Puls aus Health Connect */
 } else Cloud.init().then(c => { if (c) mergeCloud(c); cloudBadge(); });

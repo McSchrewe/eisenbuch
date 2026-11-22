@@ -11,6 +11,8 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         setTheme(R.style.AppTheme_NoActionBar);
+        registerPlugin(WatchPlugin.class);
+        registerPlugin(HealthPlugin.class);
         super.onCreate(savedInstanceState);
         applyBars();
         // Kein Zoomen wie in normalen Apps

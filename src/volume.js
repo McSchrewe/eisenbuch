@@ -67,7 +67,7 @@ function volEvaluate(p, sessions) {
 }
 /* Anwendung: zusätzlicher oder weggelassener Satz bei der ersten Übung des Muskels in der Einheit */
 function applyVol(p, items, pr) {
-  if (p.volAuto === false || !p.vol || pr.deload || pr.prep || pr.phase === 'power' || pr.phase === 'taper') return; /* kurz vor der Saison kein Zusatzvolumen */
+  if (p.volAuto === false || !p.vol || pr.deload || pr.prep || pr.nip === 'ess' || pr.phase === 'power' || pr.phase === 'taper') return; /* kurz vor der Saison kein Zusatzvolumen */
   const done = {};
   items.forEach(it => {
     const e = EX[it.exId]; if (!e || done[e.m] || !p.vol[e.m] || !['pct', 'dp', 'bw'].includes(it.mode)) return;
